@@ -23,16 +23,6 @@ App::~App() {
   default_font_ = nullptr;
 }
 
-Color App::GetColor(ThemeColor name) {
-  int key = static_cast<int>(name);
-  auto it = theme_colors_.find(key);
-  if (it != theme_colors_.end())
-    return it->second;
-  Color color = PlatformGetColor(name);
-  theme_colors_[key] = color;
-  return color;
-}
-
 Font* App::GetDefaultFont() {
   if (!default_font_)
     default_font_ = new Font;

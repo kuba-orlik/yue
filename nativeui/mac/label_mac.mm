@@ -102,7 +102,7 @@ Label::Label(const std::string& text) {
   // Default styles.
   App* app = App::GetCurrent();
   [GetNative() setNUFont:app->GetDefaultFont()];
-  [GetNative() setNUColor:app->GetColor(App::ThemeColor::Text)];
+  [GetNative() setNUColor:System::GetColor(System::Color::Text)];
 }
 
 Label::~Label() {

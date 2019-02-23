@@ -200,23 +200,6 @@ struct Type<nu::MessageLoop> {
 };
 
 template<>
-struct Type<nu::App::ThemeColor> {
-  static constexpr const char* name = "yue.ThemeColor";
-  static inline bool To(State* state, int index, nu::App::ThemeColor* out) {
-    std::string id;
-    if (!lua::To(state, index, &id))
-      return false;
-    if (id == "text")
-      *out = nu::App::ThemeColor::Text;
-    else if (id == "disabled-text")
-      *out = nu::App::ThemeColor::DisabledText;
-    else
-      return false;
-    return true;
-  }
-};
-
-template<>
 struct Type<nu::App> {
   static constexpr const char* name = "yue.App";
   static void BuildMetaTable(State* state, int metatable) {
@@ -1791,6 +1774,32 @@ struct Type<nu::Slider> {
 };
 
 template<>
+struct Type<nu::System::Color> {
+  static constexpr const char* name = "yue.ThemeColor";
+  static inline bool To(State* state, int index, nu::System::Color* out) {
+    std::string id;
+    if (!lua::To(state, index, &id))
+      return false;
+    if (id == "text")
+      *out = nu::System::Color::Text;
+    else if (id == "disabled-text")
+      *out = nu::System::Color::DisabledText;
+    else
+      return false;
+    return true;
+  }
+};
+
+template<>
+struct Type<nu::System> {
+  static constexpr const char* name = "yue.System";
+  static void BuildMetaTable(State* state, int index) {
+    RawSet(state, index,
+           "getcolor", &nu::System::GetColor);
+  }
+};
+
+template<>
 struct Type<nu::Tab> {
   using base = nu::View;
   static constexpr const char* name = "yue.Tab";
@@ -2122,6 +2131,7 @@ extern "C" int luaopen_yue_gui(lua::State* state) {
   BindType<nu::Group>(state, "Group");
   BindType<nu::Scroll>(state, "Scroll");
   BindType<nu::Slider>(state, "Slider");
+  BindType<nu::System>(state, "System");
   BindType<nu::Tab>(state, "Tab");
   BindType<nu::TableModel>(state, "TableModel");
   BindType<nu::AbstractTableModel>(state, "AbstractTableModel");

@@ -219,25 +219,6 @@ struct Type<nu::MessageLoop> {
 };
 
 template<>
-struct Type<nu::App::ThemeColor> {
-  static constexpr const char* name = "yue.ThemeColor";
-  static bool FromV8(v8::Local<v8::Context> context,
-                     v8::Local<v8::Value> value,
-                     nu::App::ThemeColor* out) {
-    std::string id;
-    if (!vb::FromV8(context, value, &id))
-      return false;
-    if (id == "text")
-      *out = nu::App::ThemeColor::Text;
-    else if (id == "disabled-text")
-      *out = nu::App::ThemeColor::DisabledText;
-    else
-      return false;
-    return true;
-  }
-};
-
-template<>
 struct Type<nu::App> {
   static constexpr const char* name = "yue.App";
   static void BuildConstructor(v8::Local<v8::Context>, v8::Local<v8::Object>) {
@@ -2073,6 +2054,38 @@ struct Type<nu::Slider> {
 };
 
 template<>
+struct Type<nu::System::Color> {
+  static constexpr const char* name = "yue.System.Color";
+  static bool FromV8(v8::Local<v8::Context> context,
+                     v8::Local<v8::Value> value,
+                     nu::System::Color* out) {
+    std::string id;
+    if (!vb::FromV8(context, value, &id))
+      return false;
+    if (id == "text")
+      *out = nu::System::Color::Text;
+    else if (id == "disabled-text")
+      *out = nu::System::Color::DisabledText;
+    else
+      return false;
+    return true;
+  }
+};
+
+template<>
+struct Type<nu::System> {
+  static constexpr const char* name = "yue.System";
+  static void BuildConstructor(v8::Local<v8::Context> context,
+                               v8::Local<v8::Object> constructor) {
+    Set(context, constructor,
+        "getColor", &nu::System::GetColor);
+  }
+  static void BuildPrototype(v8::Local<v8::Context> context,
+                             v8::Local<v8::ObjectTemplate> templ) {
+  }
+};
+
+template<>
 struct Type<nu::Tab> {
   using base = nu::View;
   static constexpr const char* name = "yue.Tab";
@@ -2441,6 +2454,7 @@ void Initialize(v8::Local<v8::Object> exports) {
           "Group",             vb::Constructor<nu::Group>(),
           "Scroll",            vb::Constructor<nu::Scroll>(),
           "Slider",            vb::Constructor<nu::Slider>(),
+          "System",            vb::Constructor<nu::System>(),
           "TableModel",        vb::Constructor<nu::TableModel>(),
           "AbstractTableModel", vb::Constructor<nu::AbstractTableModel>(),
           "SimpleTableModel",  vb::Constructor<nu::SimpleTableModel>(),

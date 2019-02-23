@@ -16,11 +16,10 @@ TextAttributes::TextAttributes(Font* font, Color color, TextAlign align,
 
 TextAttributes::TextAttributes()
     : TextAttributes(App::GetCurrent()->GetDefaultFont(),
-                     App::GetCurrent()->GetColor(App::ThemeColor::Text)) {}
+                     System::GetColor(System::Color::Text)) {}
 
 TextAttributes::TextAttributes(Font* font)
-    : TextAttributes(font,
-                     App::GetCurrent()->GetColor(App::ThemeColor::Text)) {}
+    : TextAttributes(font, System::GetColor(System::Color::Text)) {}
 
 TextAttributes::TextAttributes(Color color)
     : TextAttributes(App::GetCurrent()->GetDefaultFont(), color) {}

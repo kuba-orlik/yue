@@ -159,7 +159,7 @@ class ButtonImpl : public Clickable {
 
     // The text.
     Color text_color = is_disabled() ?
-        App::GetCurrent()->GetColor(App::ThemeColor::DisabledText) : color();
+        System::GetColor(System::Color::DisabledText) : color();
     TextAttributes attributes(font(), text_color, TextAlign::Center,
                               TextAlign::Center);
     painter->DrawTextPixel(title_, text_bounds.origin(), attributes);
