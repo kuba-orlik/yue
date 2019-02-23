@@ -1775,7 +1775,7 @@ struct Type<nu::Slider> {
 
 template<>
 struct Type<nu::System::Color> {
-  static constexpr const char* name = "yue.ThemeColor";
+  static constexpr const char* name = "yue.System.Color";
   static inline bool To(State* state, int index, nu::System::Color* out) {
     std::string id;
     if (!lua::To(state, index, &id))
@@ -1791,11 +1791,33 @@ struct Type<nu::System::Color> {
 };
 
 template<>
+struct Type<nu::System::Path> {
+  static constexpr const char* name = "yue.System.Path";
+  static inline bool To(State* state, int index, nu::System::Path* out) {
+    std::string id;
+    if (!lua::To(state, index, &id))
+      return false;
+    if (id == "app-data")
+      *out = nu::System::Path::AppData;
+    else if (id == "cache")
+      *out = nu::System::Path::Cache;
+    else if (id == "home")
+      *out = nu::System::Path::Home;
+    else if (id == "desktop")
+      *out = nu::System::Path::Desktop;
+    else
+      return false;
+    return true;
+  }
+};
+
+template<>
 struct Type<nu::System> {
   static constexpr const char* name = "yue.System";
   static void BuildMetaTable(State* state, int index) {
     RawSet(state, index,
-           "getcolor", &nu::System::GetColor);
+           "getcolor", &nu::System::GetColor,
+           "getpath", &nu::System::GetPath);
   }
 };
 

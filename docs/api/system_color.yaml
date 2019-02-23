@@ -2,7 +2,7 @@ name: System::Color
 header: nativeui/system.h
 type: enum class
 namespace: nu
-description: Represent possible theme colors.
+description: System theme colors.
 
 lang_detail:
   cpp: |

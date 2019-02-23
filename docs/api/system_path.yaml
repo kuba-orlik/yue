@@ -1,0 +1,22 @@
+name: System::Path
+header: nativeui/system.h
+type: enum class
+namespace: nu
+description: Predefined filesystem paths.
+
+lang_detail:
+  cpp: |
+    This type is an `enum class` with following values:
+      * `System::Path::AppData`
+      * `System::Path::Cache`
+      * `System::Path::Home`
+      * `System::Path::Desktop`
+
+  lua: &ref |
+    This type is a string with following possible values:
+    * `"app-data"`
+    * `"cache"`
+    * `"home"`
+    * `"desktop"`
+
+  js: *ref

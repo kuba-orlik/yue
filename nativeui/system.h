@@ -8,6 +8,10 @@
 #include "base/macros.h"
 #include "nativeui/gfx/color.h"
 
+namespace base {
+class FilePath;
+}
+
 namespace nu {
 
 class NATIVEUI_EXPORT System {
@@ -18,6 +22,15 @@ class NATIVEUI_EXPORT System {
   };
 
   static nu::Color GetColor(Color name);
+
+  enum class Path {
+    AppData,
+    Cache,
+    Home,
+    Desktop,
+  };
+
+  static base::FilePath GetPath(Path name);
 
  private:
   DISALLOW_IMPLICIT_CONSTRUCTORS(System);

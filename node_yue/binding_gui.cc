@@ -2073,12 +2073,36 @@ struct Type<nu::System::Color> {
 };
 
 template<>
+struct Type<nu::System::Path> {
+  static constexpr const char* name = "yue.System.Path";
+  static bool FromV8(v8::Local<v8::Context> context,
+                     v8::Local<v8::Value> value,
+                     nu::System::Path* out) {
+    std::string id;
+    if (!vb::FromV8(context, value, &id))
+      return false;
+    if (id == "app-data")
+      *out = nu::System::Path::AppData;
+    else if (id == "cache")
+      *out = nu::System::Path::Cache;
+    else if (id == "home")
+      *out = nu::System::Path::Home;
+    else if (id == "desktop")
+      *out = nu::System::Path::Desktop;
+    else
+      return false;
+    return true;
+  }
+};
+
+template<>
 struct Type<nu::System> {
   static constexpr const char* name = "yue.System";
   static void BuildConstructor(v8::Local<v8::Context> context,
                                v8::Local<v8::Object> constructor) {
     Set(context, constructor,
-        "getColor", &nu::System::GetColor);
+        "getColor", &nu::System::GetColor,
+        "getPath", &nu::System::GetPath);
   }
   static void BuildPrototype(v8::Local<v8::Context> context,
                              v8::Local<v8::ObjectTemplate> templ) {
