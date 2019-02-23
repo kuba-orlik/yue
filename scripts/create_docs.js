@@ -26,7 +26,7 @@ renderer.codespan = (code) => {
   const match = code.match(/^&lt;\!(.*)&gt;(.*)$/)
   if (match)
     code = parseInlineCode(renderer.lang, match[1], match[2])
-  return `<code>${code}</code>`
+  return code.startsWith('<') ? code : `<code>${code}</code>`
 }
 
 // Support highlighting in markdown.
@@ -424,6 +424,9 @@ function parseInlineCode(lang, type, code) {
   switch (type) {
     case 'enum class':
       return parseEnumClass(lang, code)
+    case 'type':
+      const info = parseType(lang, code)
+      return `<code><a class="type" href="${info.id}.html">${info.name}</a></code>`
     case '':
       return code
     default:
