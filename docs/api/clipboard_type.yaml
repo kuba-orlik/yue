@@ -4,27 +4,14 @@ type: enum class
 namespace: nu
 description: Type of `Clipboard`.
 
-lang_detail:
-  cpp: |
-    This type is an `enum class` with following values:
-    * `Clipboard::Type::CopyPaste`
-    * `Clipboard::Type::Drag`
-    * `Clipboard::Type::Find`
-    * `Clipboard::Type::Font`
-    * `Clipboard::Type::Selection`
+detail: |
+  This type can have following values:
+  * `<!enum class>Clipboard::Type::CopyPaste`
 
-    The `Drag`, `Find`, `Font` clipboards are only available on macOS, and the
-    `Selection` clipboard is only available on Linux.
+  On macOS following clipboards are also available:
+  * `<!enum class>Clipboard::Type::Drag`
+  * `<!enum class>Clipboard::Type::Find`
+  * `<!enum class>Clipboard::Type::Font`
 
-  lua: &ref |
-    This type is a string with following possible values:
-    * `"copy-paste"`
-    * `"drag"`
-    * `"find"`
-    * `"font"`
-    * `"selection"`
-
-    The `drag`, `find`, `font` clipboards are only available on macOS, and the
-    `selection` clipboard is only available on Linux.
-
-  js: *ref
+  On Linux following clipboards are also available:
+  * `<!enum class>Clipboard::Type::Selection`

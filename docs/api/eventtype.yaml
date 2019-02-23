@@ -6,13 +6,12 @@ namespace: nu
 description: Represent possible event types.
 
 detail: |
-  `EventType` is an `enum class` with following values:
-
-  * `EventType::Unknown`
-  * `EventType::MouseDown`
-  * `EventType::MouseUp`
-  * `EventType::MouseMove`
-  * `EventType::MouseEnter`
-  * `EventType::MouseLeave`
-  * `EventType::KeyDown`
-  * `EventType::KeyUp`
+  This type can have following values:
+  * `<!enum class>EventType::Unknown`
+  * `<!enum class>EventType::MouseDown`
+  * `<!enum class>EventType::MouseUp`
+  * `<!enum class>EventType::MouseMove`
+  * `<!enum class>EventType::MouseEnter`
+  * `<!enum class>EventType::MouseLeave`
+  * `<!enum class>EventType::KeyDown`
+  * `<!enum class>EventType::KeyUp`

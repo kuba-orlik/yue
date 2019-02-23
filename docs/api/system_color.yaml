@@ -4,15 +4,7 @@ type: enum class
 namespace: nu
 description: System theme colors.
 
-lang_detail:
-  cpp: |
-    This type is an `enum class` with following values:
-      * `System::Color::Text`
-      * `System::Color::DisabledText`
-
-  lua: &ref |
-    This type is a string with following possible values:
-    * `"text"`
-    * `"disabled-text"`
-
-  js: *ref
+detail: |
+  This type can have following values:
+  * `<!enum class>System::Color::Text` - Normal text color.
+  * `<!enum class>System::Color::DisabledText` - Text color for disabled views.

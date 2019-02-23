@@ -10,45 +10,20 @@ detail: |
   item, and Yue will automatically set labels, accelerators and actions for the
   menu item.
 
-lang_detail:
-  cpp: |
-    This type is an `enum class` with following values:
-    * `MenuItem::Role::Copy`
-    * `MenuItem::Role::Cut`
-    * `MenuItem::Role::Paste`
-    * `MenuItem::Role::SelectAll`
-    * `MenuItem::Role::Undo`
-    * `MenuItem::Role::Redo`
+  This type can have following values:
+  * `<!enum class>MenuItem::Role::Copy`
+  * `<!enum class>MenuItem::Role::Cut`
+  * `<!enum class>MenuItem::Role::Paste`
+  * `<!enum class>MenuItem::Role::SelectAll`
+  * `<!enum class>MenuItem::Role::Undo`
+  * `<!enum class>MenuItem::Role::Redo`
 
-    On macOS following values are also available:
+  On macOS following values are also available:
 
-    * `MenuItem::Role::About`
-    * `MenuItem::Role::Hide`
-    * `MenuItem::Role::HideOthers`
-    * `MenuItem::Role::Unhide`
-    * `MenuItem::Role::Help`
-    * `MenuItem::Role::Window`
-    * `MenuItem::Role::Services`
-
-  lua: &ref |
-    This type is a string with following possible values:
-    * `"copy"`
-    * `"cut"`
-    * `"paste"`
-    * `"select-all"`
-    * `"undo"`
-    * `"redo"`
-
-    On macOS following values are also available:
-
-    * `"about"`
-    * `"hide"`
-    * `"hide-others"`
-    * `"unhide"`
-    * `"help"`
-    * `"window"`
-    * `"services"`
-
-  js: *ref
-
-
+  * `<!enum class>MenuItem::Role::About`
+  * `<!enum class>MenuItem::Role::Hide`
+  * `<!enum class>MenuItem::Role::HideOthers`
+  * `<!enum class>MenuItem::Role::Unhide`
+  * `<!enum class>MenuItem::Role::Help`
+  * `<!enum class>MenuItem::Role::Window`
+  * `<!enum class>MenuItem::Role::Services`

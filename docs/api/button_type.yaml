@@ -4,17 +4,8 @@ type: enum class
 namespace: nu
 description: Represent possible `Button` types.
 
-lang_detail:
-  cpp: |
-    This type is an `enum class` with following values:
-    * `Button::Type::Normal`
-    * `Button::Type::Checkbox`
-    * `Button::Type::Radio`
-
-  lua: &ref |
-    This type is a string with following possible values:
-    * `"normal"`
-    * `"checkbox"`
-    * `"radio"`
-
-  js: *ref
+detail: |
+  This type can have following values:
+  * `<!enum class>Button::Type::Normal`
+  * `<!enum class>Button::Type::Checkbox`
+  * `<!enum class>Button::Type::Radio`
