@@ -9,6 +9,7 @@
 #include "base/mac/scoped_cftyperef.h"
 #include "base/mac/scoped_nsobject.h"
 #include "base/strings/sys_string_conversions.h"
+#include "nativeui/gfx/attributed_text.h"
 #include "nativeui/gfx/canvas.h"
 #include "nativeui/gfx/font.h"
 #include "nativeui/gfx/image.h"
@@ -217,62 +218,59 @@ void PainterMac::DrawCanvasFromRect(Canvas* canvas, const RectF& src,
               hints:nil];
 }
 
+void PainterMac::DrawAttributedText(AttributedText* text, const RectF& rect,
+                                    const TextDrawOptions& options) {
+  DrawAttributedString(text->GetNative(), rect, options);
+}
+
 TextMetrics PainterMac::MeasureText(const std::string& text, float width,
                                     const TextAttributes& attributes) {
   return nu::MeasureText(text, width, attributes);
 }
 
 void PainterMac::DrawText(const std::string& text, const RectF& rect,
-                          const TextAttributes& attributes) {
-  NSString* str = base::SysUTF8ToNSString(text);
+                          const TextAttributes& attrs) {
+  NSDictionary* attrs_dict = @{
+    NSFontAttributeName: attrs.font->GetNative(),
+    NSForegroundColorAttributeName: attrs.color.ToNSColor(),
+  };
+  DrawAttributedString(
+      [[[NSAttributedString alloc] initWithString:base::SysUTF8ToNSString(text)
+                                       attributes:attrs_dict] autorelease],
+      rect, attrs);
+}
+
+void PainterMac::DrawAttributedString(NSAttributedString* str,
+                                      const RectF& rect,
+                                      const TextDrawOptions& options) {
+  // Options for drawing.
+  int draw_options = NSStringDrawingUsesLineFragmentOrigin;
+  if (options.ellipsis)
+    draw_options |= NSStringDrawingTruncatesLastVisibleLine;
 
   // Horizontal alignment.
-  base::scoped_nsobject<NSMutableParagraphStyle> paragraph(
-      [[NSParagraphStyle defaultParagraphStyle] mutableCopy]);
-  switch (attributes.align) {
-    case TextAlign::Start:
-      [paragraph setAlignment:NSLeftTextAlignment];
-      break;
-    case TextAlign::Center:
-      [paragraph setAlignment:NSCenterTextAlignment];
-      break;
-    case TextAlign::End:
-      [paragraph setAlignment:NSRightTextAlignment];
-      break;
-  }
-
-  // Attributes passed to Cocoa.
-  NSDictionary* attrs_dict = @{
-    NSFontAttributeName: attributes.font->GetNative(),
-    NSParagraphStyleAttributeName: paragraph.get(),
-    NSForegroundColorAttributeName: attributes.color.ToNSColor(),
-  };
-
-  // Options for drawing.
-  int options = NSStringDrawingUsesLineFragmentOrigin;
-  if (attributes.ellipsis)
-    options |= NSStringDrawingTruncatesLastVisibleLine;
+  RectF bounds(rect);
+  NSSize text_size = options.wrap ?
+      [str boundingRectWithSize:rect.size().ToCGSize()
+                        options:draw_options
+                        context:nil].size :
+      [str size];
+  if (options.align == TextAlign::Center)
+    bounds.Inset((rect.width() - text_size.width) / 2.f, 0.f);
+  else if (options.align == TextAlign::End)
+    bounds.Inset(rect.width() - text_size.width, 0.f, 0.f, 0.f);
 
   // Vertical alignment.
-  RectF bounds(rect);
-  float text_height = attributes.wrap ?
-      [str boundingRectWithSize:rect.size().ToCGSize()
-                        options:options
-                     attributes:attrs_dict
-                        context:nil].size.height :
-      [str sizeWithAttributes:attrs_dict].height;
-  // Compute the drawing bounds.
-  if (attributes.valign == TextAlign::Start)
-    bounds.set_height(text_height);
-  else if (attributes.valign == TextAlign::Center)
-    bounds.Inset(0.f, (rect.height() - text_height) / 2.f);
-  else if (attributes.valign == TextAlign::End)
-    bounds.Inset(0.f, rect.height() - text_height, 0.f, 0.f);
+  if (options.valign == TextAlign::Start)
+    bounds.Inset(0.f, rect.height() - text_size.height, 0.f, 0.f);
+  else if (options.valign == TextAlign::Center)
+    bounds.Inset(0.f, (rect.height() - text_size.height) / 2.f);
+  else if (options.valign == TextAlign::End)
+    bounds.set_height(text_size.height);
 
   GraphicsContextScope scoped(target_context_);
   [str drawWithRect:bounds.ToCGRect()
-            options:options
-         attributes:attrs_dict
+            options:draw_options
             context:nil];
 }
 

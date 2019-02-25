@@ -217,6 +217,20 @@ struct Type<nu::App> {
 };
 
 template<>
+struct Type<nu::AttributedText> {
+  static constexpr const char* name = "yue.AttributedText";
+  static void BuildMetaTable(State* state, int metatable) {
+    RawSet(state, metatable,
+           "create", &CreateOnHeap<nu::AttributedText, const std::string&>,
+           "setfont", &nu::AttributedText::SetFont,
+           "setfontfor", &nu::AttributedText::SetFontFor,
+           "setcolor", &nu::AttributedText::SetColor,
+           "setcolorfor", &nu::AttributedText::SetColorFor,
+           "gettext", &nu::AttributedText::GetText);
+  }
+};
+
+template<>
 struct Type<nu::Font::Weight> {
   static constexpr const char* name = "yue.Font.Weight";
   static inline bool To(State* state, int index, nu::Font::Weight* out) {
@@ -640,22 +654,52 @@ struct Type<nu::TextAlign> {
       return false;
     return true;
   }
+  static inline void Push(State* state, nu::TextAlign align) {
+    switch (align) {
+      case nu::TextAlign::Center:
+        lua::Push(state, "center");
+        break;
+      case nu::TextAlign::End:
+        lua::Push(state, "end");
+        break;
+      default:
+        lua::Push(state, "start");
+        break;
+    }
+  }
+};
+
+template<>
+struct Type<nu::TextDrawOptions> {
+  static constexpr const char* name = "yue.TextDrawOptions";
+  static inline bool To(State* state, int index, nu::TextDrawOptions* out) {
+    if (GetType(state, index) != LuaType::Table)
+      return false;
+    RawGetAndPop(state, index, "align", &out->align);
+    RawGetAndPop(state, index, "valign", &out->valign);
+    RawGetAndPop(state, index, "wrap", &out->wrap);
+    RawGetAndPop(state, index, "ellipsis", &out->ellipsis);
+    return true;
+  }
+  static inline void Push(State* state, const nu::TextDrawOptions& options) {
+    NewTable(state, 0, 4);
+    RawSet(state, -1, "align", options.align);
+    RawSet(state, -1, "valign", options.valign);
+    RawSet(state, -1, "wrap", options.wrap);
+    RawSet(state, -1, "ellipsis", options.ellipsis);
+  }
 };
 
 template<>
 struct Type<nu::TextAttributes> {
   static constexpr const char* name = "yue.TextAttributes";
   static inline bool To(State* state, int index, nu::TextAttributes* out) {
-    if (GetType(state, index) != LuaType::Table)
+    if (!Type<nu::TextDrawOptions>::To(state, index, out))
       return false;
     nu::Font* font;
     if (RawGetAndPop(state, index, "font", &font))
       out->font = font;
     RawGetAndPop(state, index, "color", &out->color);
-    RawGetAndPop(state, index, "align", &out->align);
-    RawGetAndPop(state, index, "valign", &out->valign);
-    RawGetAndPop(state, index, "wrap", &out->wrap);
-    RawGetAndPop(state, index, "ellipsis", &out->ellipsis);
     return true;
   }
 };
@@ -700,6 +744,9 @@ struct Type<nu::Painter> {
            "drawimagefromrect", &nu::Painter::DrawImageFromRect,
            "drawcanvas", &nu::Painter::DrawCanvas,
            "drawcanvasfromrect", &nu::Painter::DrawCanvasFromRect,
+#if defined(OS_MACOSX) || defined(OS_WIN)
+           "drawattributedtext", &nu::Painter::DrawAttributedText,
+#endif
            "measuretext", &nu::Painter::MeasureText,
            "drawtext", &nu::Painter::DrawText);
   }
@@ -1704,6 +1751,20 @@ struct Type<nu::Group> {
 };
 
 template<>
+struct Type<nu::RichLabel> {
+  using base = nu::View;
+  static constexpr const char* name = "yue.RichLabel";
+  static void BuildMetaTable(State* state, int metatable) {
+    RawSet(state, metatable,
+           "create", &CreateOnHeap<nu::RichLabel, nu::AttributedText*>,
+           "setattributedtext", &nu::RichLabel::SetAttributedText,
+           "getattributedtext", &nu::RichLabel::GetAttributedText,
+           "settextdrawoptions", &nu::RichLabel::SetTextDrawOptions,
+           "gettextdrawoptions", &nu::RichLabel::GetTextDrawOptions);
+  }
+};
+
+template<>
 struct Type<nu::Scroll::Policy> {
   static constexpr const char* name = "yue.Scroll.Policy";
   static inline bool To(State* state, int index, nu::Scroll::Policy* out) {
@@ -2122,6 +2183,7 @@ extern "C" int luaopen_yue_gui(lua::State* state) {
   BindType<nu::Lifetime>(state, "Lifetime");
   BindType<nu::MessageLoop>(state, "MessageLoop");
   BindType<nu::App>(state, "App");
+  BindType<nu::AttributedText>(state, "AttributedText");
   BindType<nu::Font>(state, "Font");
   BindType<nu::Canvas>(state, "Canvas");
   BindType<nu::Clipboard>(state, "Clipboard");
@@ -2151,6 +2213,7 @@ extern "C" int luaopen_yue_gui(lua::State* state) {
   BindType<nu::ProgressBar>(state, "ProgressBar");
   BindType<nu::GifPlayer>(state, "GifPlayer");
   BindType<nu::Group>(state, "Group");
+  BindType<nu::RichLabel>(state, "RichLabel");
   BindType<nu::Scroll>(state, "Scroll");
   BindType<nu::Slider>(state, "Slider");
   BindType<nu::System>(state, "System");

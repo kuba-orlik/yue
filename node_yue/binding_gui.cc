@@ -239,6 +239,25 @@ struct Type<nu::App> {
 };
 
 template<>
+struct Type<nu::AttributedText> {
+  static constexpr const char* name = "yue.AttributedText";
+  static void BuildConstructor(v8::Local<v8::Context> context,
+                               v8::Local<v8::Object> constructor) {
+    Set(context, constructor,
+        "create", &CreateOnHeap<nu::AttributedText, const std::string&>);
+  }
+  static void BuildPrototype(v8::Local<v8::Context> context,
+                             v8::Local<v8::ObjectTemplate> templ) {
+    Set(context, templ,
+        "setFont", &nu::AttributedText::SetFont,
+        "setFontFor", &nu::AttributedText::SetFontFor,
+        "setColor", &nu::AttributedText::SetColor,
+        "setColorFor", &nu::AttributedText::SetColorFor,
+        "getText", &nu::AttributedText::GetText);
+  }
+};
+
+template<>
 struct Type<nu::Font::Weight> {
   static constexpr const char* name = "yue.Font.Weight";
   static bool FromV8(v8::Local<v8::Context> context,
@@ -707,6 +726,43 @@ struct Type<nu::TextAlign> {
       return false;
     return true;
   }
+  static v8::Local<v8::Value> ToV8(v8::Local<v8::Context> context,
+                                   nu::TextAlign align) {
+    switch (align) {
+      case nu::TextAlign::Center:
+        return vb::ToV8(context, "center");
+      case nu::TextAlign::End:
+        return vb::ToV8(context, "end");
+      default:
+        return vb::ToV8(context, "start");
+    }
+  }
+};
+
+template<>
+struct Type<nu::TextDrawOptions> {
+  static constexpr const char* name = "yue.TextDrawOptions";
+  static bool FromV8(v8::Local<v8::Context> context,
+                     v8::Local<v8::Value> value,
+                     nu::TextDrawOptions* out) {
+    if (!value->IsObject())
+      return false;
+    v8::Local<v8::Object> obj = value.As<v8::Object>();
+    Get(context, obj, "align", &out->align);
+    Get(context, obj, "valign", &out->valign);
+    Get(context, obj, "wrap", &out->wrap);
+    Get(context, obj, "ellipsis", &out->ellipsis);
+    return true;
+  }
+  static v8::Local<v8::Value> ToV8(v8::Local<v8::Context> context,
+                                   const nu::TextDrawOptions& options) {
+    v8::Local<v8::Object> obj = v8::Object::New(context->GetIsolate());
+    Set(context, obj, "align", options.align);
+    Set(context, obj, "valign", options.valign);
+    Set(context, obj, "wrap", options.wrap);
+    Set(context, obj, "ellipsis", options.ellipsis);
+    return obj;
+  }
 };
 
 template<>
@@ -715,17 +771,13 @@ struct Type<nu::TextAttributes> {
   static bool FromV8(v8::Local<v8::Context> context,
                      v8::Local<v8::Value> value,
                      nu::TextAttributes* out) {
-    if (!value->IsObject())
+    if (!Type<nu::TextDrawOptions>::FromV8(context, value, out))
       return false;
     v8::Local<v8::Object> obj = value.As<v8::Object>();
     nu::Font* font;
     if (Get(context, obj, "font", &font))
       out->font = font;
     Get(context, obj, "color", &out->color);
-    Get(context, obj, "align", &out->align);
-    Get(context, obj, "valign", &out->valign);
-    Get(context, obj, "wrap", &out->wrap);
-    Get(context, obj, "ellipsis", &out->ellipsis);
     return true;
   }
 };
@@ -776,6 +828,9 @@ struct Type<nu::Painter> {
         "drawImageFromRect", &nu::Painter::DrawImageFromRect,
         "drawCanvas", &nu::Painter::DrawCanvas,
         "drawCanvasFromRect", &nu::Painter::DrawCanvasFromRect,
+#if defined(OS_MACOSX) || defined(OS_WIN)
+        "drawAttributedText", &nu::Painter::DrawAttributedText,
+#endif
         "measureText", &nu::Painter::MeasureText,
         "drawText", &nu::Painter::DrawText);
   }
@@ -1973,6 +2028,25 @@ struct Type<nu::Group> {
 };
 
 template<>
+struct Type<nu::RichLabel> {
+  using base = nu::View;
+  static constexpr const char* name = "yue.RichLabel";
+  static void BuildConstructor(v8::Local<v8::Context> context,
+                               v8::Local<v8::Object> constructor) {
+    Set(context, constructor,
+        "create", &CreateOnHeap<nu::RichLabel, nu::AttributedText*>);
+  }
+  static void BuildPrototype(v8::Local<v8::Context> context,
+                             v8::Local<v8::ObjectTemplate> templ) {
+    Set(context, templ,
+        "setAttributedText", &nu::RichLabel::SetAttributedText,
+        "getAttributedText", &nu::RichLabel::GetAttributedText,
+        "setTextDrawOptions", &nu::RichLabel::SetTextDrawOptions,
+        "getTextDrawOptions", &nu::RichLabel::GetTextDrawOptions);
+  }
+};
+
+template<>
 struct Type<nu::Scroll::Policy> {
   static constexpr const char* name = "yue.Scroll.Policy";
   static v8::Local<v8::Value> ToV8(v8::Local<v8::Context> context,
@@ -2446,6 +2520,7 @@ void Initialize(v8::Local<v8::Object> exports) {
   vb::Set(context, exports,
           // Classes.
           "App",               vb::Constructor<nu::App>(),
+          "AttributedText",    vb::Constructor<nu::AttributedText>(),
           "Font",              vb::Constructor<nu::Font>(),
           "Canvas",            vb::Constructor<nu::Canvas>(),
           "Clipboard",         vb::Constructor<nu::Clipboard>(),
@@ -2476,6 +2551,7 @@ void Initialize(v8::Local<v8::Object> exports) {
           "ProgressBar",       vb::Constructor<nu::ProgressBar>(),
           "GifPlayer",         vb::Constructor<nu::GifPlayer>(),
           "Group",             vb::Constructor<nu::Group>(),
+          "RichLabel",         vb::Constructor<nu::RichLabel>(),
           "Scroll",            vb::Constructor<nu::Scroll>(),
           "Slider",            vb::Constructor<nu::Slider>(),
           "System",            vb::Constructor<nu::System>(),

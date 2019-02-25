@@ -53,12 +53,17 @@ class PainterMac : public Painter {
   void DrawCanvas(Canvas* canvas, const RectF& rect) override;
   void DrawCanvasFromRect(Canvas* canvas, const RectF& src,
                           const RectF& dest) override;
+  void DrawAttributedText(AttributedText* text, const RectF& rect,
+                          const TextDrawOptions& options) override;
   TextMetrics MeasureText(const std::string& text, float width,
                           const TextAttributes& attributes) override;
   void DrawText(const std::string& text, const RectF& rect,
                 const TextAttributes& attributes) override;
 
  private:
+  void DrawAttributedString(NSAttributedString* str, const RectF& rect,
+                            const TextDrawOptions& options);
+
   // APIs of Core Graphics operate on current context, while we don't set
   // current context for memory bitmap. So in order to support Canvas we have
   // to save the context object and do manual context switching.

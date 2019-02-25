@@ -19,6 +19,7 @@
 
 namespace nu {
 
+class AttributedText;
 class Canvas;
 class Image;
 
@@ -82,6 +83,10 @@ class NATIVEUI_EXPORT Painter {
   virtual void DrawCanvas(Canvas* canvas, const RectF& rect) = 0;
   virtual void DrawCanvasFromRect(Canvas* canvas, const RectF& src,
                                   const RectF& dest) = 0;
+
+  // Draw attributed |text|.
+  virtual void DrawAttributedText(AttributedText* text, const RectF& rect,
+                                  const TextDrawOptions& options) = 0;
 
   // Return the space taken to paint the full string.
   virtual TextMetrics MeasureText(const std::string& text, float width,
