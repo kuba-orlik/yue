@@ -4,6 +4,8 @@
 
 #include "nativeui/system.h"
 
+#include <memory>
+
 #include "base/files/file_path.h"
 #include "base/path_service.h"
 
