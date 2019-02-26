@@ -253,6 +253,7 @@ struct Type<nu::AttributedText> {
         "setFontFor", &nu::AttributedText::SetFontFor,
         "setColor", &nu::AttributedText::SetColor,
         "setColorFor", &nu::AttributedText::SetColorFor,
+        "getBoundsFor", &nu::AttributedText::GetBoundsFor,
         "getText", &nu::AttributedText::GetText);
   }
 };
@@ -828,9 +829,7 @@ struct Type<nu::Painter> {
         "drawImageFromRect", &nu::Painter::DrawImageFromRect,
         "drawCanvas", &nu::Painter::DrawCanvas,
         "drawCanvasFromRect", &nu::Painter::DrawCanvasFromRect,
-#if defined(OS_MACOSX) || defined(OS_WIN)
         "drawAttributedText", &nu::Painter::DrawAttributedText,
-#endif
         "measureText", &nu::Painter::MeasureText,
         "drawText", &nu::Painter::DrawText);
   }

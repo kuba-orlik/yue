@@ -12,8 +12,8 @@ namespace nu {
 namespace {
 
 YGSize MeasureRichLabel(YGNodeRef node,
-                    float width, YGMeasureMode mode,
-                    float height, YGMeasureMode height_mode) {
+                        float width, YGMeasureMode mode,
+                        float height, YGMeasureMode height_mode) {
   auto* label = static_cast<RichLabel*>(YGNodeGetContext(node));
   SizeF size = label->GetAttributedText()
                     ->GetBoundsFor(SizeF(width, height),
