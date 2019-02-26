@@ -42,15 +42,24 @@ void AttributedText::PlatformSetColorFor(Color color, int start, int end) {
                 range:NSMakeRange(start, IndexToLength(text_, start, end))];
 }
 
-RectF AttributedText::GetBoundsFor(const SizeF size,
+RectF AttributedText::GetBoundsFor(const SizeF& size,
                                    const TextDrawOptions& options) {
   int draw_options = 0;
   if (options.wrap)
     draw_options |= NSStringDrawingUsesLineFragmentOrigin;
   if (options.ellipsis)
     draw_options |= NSStringDrawingTruncatesLastVisibleLine;
-  return RectF([text_ boundingRectWithSize:size.ToCGSize()
-                                   options:draw_options]);
+  if (options.wrap || options.ellipsis) {
+    // The height returned by boundingRectWithSize can not be larger than passed
+    // size by default, which is not really expected behavior.
+    NSSize bsize = options.ellipsis ? size.ToCGSize()
+                                    : NSMakeSize(size.width(), FLT_MAX);
+    return RectF([text_ boundingRectWithSize:bsize
+                                     options:draw_options]);
+  } else {
+    // boundingRectWithSize does not work well for single line text.
+    return RectF(SizeF([text_ size]));
+  }
 }
 
 std::string AttributedText::GetText() const {

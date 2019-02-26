@@ -94,7 +94,7 @@ class NATIVEUI_EXPORT Painter {
 
   // Draw |text| with additional |attributes|.
   virtual void DrawText(const std::string& text, const RectF& rect,
-                        const TextAttributes& attributes) = 0;
+                        const TextAttributes& attributes);
 
   base::WeakPtr<Painter> GetWeakPtr() { return weak_factory_.GetWeakPtr(); }
 

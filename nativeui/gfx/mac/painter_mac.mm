@@ -220,58 +220,37 @@ void PainterMac::DrawCanvasFromRect(Canvas* canvas, const RectF& src,
 
 void PainterMac::DrawAttributedText(AttributedText* text, const RectF& rect,
                                     const TextDrawOptions& options) {
-  DrawAttributedString(text->GetNative(), rect, options);
-}
-
-TextMetrics PainterMac::MeasureText(const std::string& text, float width,
-                                    const TextAttributes& attributes) {
-  return nu::MeasureText(text, width, attributes);
-}
-
-void PainterMac::DrawText(const std::string& text, const RectF& rect,
-                          const TextAttributes& attrs) {
-  NSDictionary* attrs_dict = @{
-    NSFontAttributeName: attrs.font->GetNative(),
-    NSForegroundColorAttributeName: attrs.color.ToNSColor(),
-  };
-  DrawAttributedString(
-      [[[NSAttributedString alloc] initWithString:base::SysUTF8ToNSString(text)
-                                       attributes:attrs_dict] autorelease],
-      rect, attrs);
-}
-
-void PainterMac::DrawAttributedString(NSAttributedString* str,
-                                      const RectF& rect,
-                                      const TextDrawOptions& options) {
-  // Options for drawing.
+  // We still need the NSStringDrawingUsesLineFragmentOrigin flag even when
+  // drawing single line, otherwise Cocoa would reserve space for an empty line.
   int draw_options = NSStringDrawingUsesLineFragmentOrigin;
   if (options.ellipsis)
     draw_options |= NSStringDrawingTruncatesLastVisibleLine;
 
   // Horizontal alignment.
   RectF bounds(rect);
-  NSSize text_size = options.wrap ?
-      [str boundingRectWithSize:rect.size().ToCGSize()
-                        options:draw_options
-                        context:nil].size :
-      [str size];
+  RectF text_bounds = text->GetBoundsFor(rect.size(), options);
   if (options.align == TextAlign::Center)
-    bounds.Inset((rect.width() - text_size.width) / 2.f, 0.f);
+    bounds.Inset((rect.width() - text_bounds.width()) / 2.f, 0.f);
   else if (options.align == TextAlign::End)
-    bounds.Inset(rect.width() - text_size.width, 0.f, 0.f, 0.f);
+    bounds.Inset(rect.width() - text_bounds.width(), 0.f, 0.f, 0.f);
 
   // Vertical alignment.
   if (options.valign == TextAlign::Start)
-    bounds.Inset(0.f, rect.height() - text_size.height, 0.f, 0.f);
+    bounds.Inset(0.f, rect.height() - text_bounds.height(), 0.f, 0.f);
   else if (options.valign == TextAlign::Center)
-    bounds.Inset(0.f, (rect.height() - text_size.height) / 2.f);
+    bounds.Inset(0.f, (rect.height() - text_bounds.height()) / 2.f);
   else if (options.valign == TextAlign::End)
-    bounds.set_height(text_size.height);
+    bounds.set_height(text_bounds.height());
 
   GraphicsContextScope scoped(target_context_);
-  [str drawWithRect:bounds.ToCGRect()
-            options:draw_options
-            context:nil];
+  [text->GetNative() drawWithRect:bounds.ToCGRect()
+                          options:draw_options
+                          context:nil];
+}
+
+TextMetrics PainterMac::MeasureText(const std::string& text, float width,
+                                    const TextAttributes& attributes) {
+  return nu::MeasureText(text, width, attributes);
 }
 
 }  // namespace nu

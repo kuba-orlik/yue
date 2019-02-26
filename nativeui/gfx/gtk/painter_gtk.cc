@@ -227,14 +227,6 @@ TextMetrics PainterGtk::MeasureText(const std::string& text, float width,
   return { SizeF(bwidth, bheight) };
 }
 
-void PainterGtk::DrawText(const std::string& str, const RectF& rect,
-                          const TextAttributes& attributes) {
-  scoped_refptr<AttributedText> text(new AttributedText(str));
-  text->SetFont(attributes.font.get());
-  text->SetColor(attributes.color);
-  DrawAttributedText(text.get(), rect, attributes);
-}
-
 void PainterGtk::Initialize() {
   // Initial state.
   states_.push({Color(), Color()});

@@ -74,7 +74,7 @@ void AttributedText::PlatformSetColorFor(Color color, int start, int end) {
   pango_attr_list_insert(attrs, fg_attr);  // ownership taken
 }
 
-RectF AttributedText::GetBoundsFor(const SizeF size,
+RectF AttributedText::GetBoundsFor(const SizeF& size,
                                    const TextDrawOptions& options) {
   SetupPangoLayout(text_, size, options);
   int width, height;
