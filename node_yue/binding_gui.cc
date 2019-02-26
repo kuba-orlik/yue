@@ -1935,15 +1935,19 @@ struct Type<nu::Label> {
   static void BuildConstructor(v8::Local<v8::Context> context,
                                v8::Local<v8::Object> constructor) {
     Set(context, constructor,
-        "create", &CreateOnHeap<nu::Label, const std::string&>);
+        "create", &CreateOnHeap<nu::Label, const std::string&>,
+        "createWithAttributedText",
+        &CreateOnHeap<nu::Label, nu::AttributedText*>);
   }
   static void BuildPrototype(v8::Local<v8::Context> context,
                              v8::Local<v8::ObjectTemplate> templ) {
     Set(context, templ,
         "setText", &nu::Label::SetText,
         "getText", &nu::Label::GetText,
-        "setAlign", &nu::Label::SetAlign,
-        "setVAlign", &nu::Label::SetVAlign);
+        "setAttributedText", &nu::Label::SetAttributedText,
+        "getAttributedText", &nu::Label::GetAttributedText,
+        "setTextDrawOptions", &nu::Label::SetTextDrawOptions,
+        "getTextDrawOptions", &nu::Label::GetTextDrawOptions);
   }
 };
 
@@ -2023,25 +2027,6 @@ struct Type<nu::Group> {
         "getContentView", &nu::Group::GetContentView,
         "setTitle", &nu::Group::SetTitle,
         "getTitle", &nu::Group::GetTitle);
-  }
-};
-
-template<>
-struct Type<nu::RichLabel> {
-  using base = nu::View;
-  static constexpr const char* name = "yue.RichLabel";
-  static void BuildConstructor(v8::Local<v8::Context> context,
-                               v8::Local<v8::Object> constructor) {
-    Set(context, constructor,
-        "create", &CreateOnHeap<nu::RichLabel, nu::AttributedText*>);
-  }
-  static void BuildPrototype(v8::Local<v8::Context> context,
-                             v8::Local<v8::ObjectTemplate> templ) {
-    Set(context, templ,
-        "setAttributedText", &nu::RichLabel::SetAttributedText,
-        "getAttributedText", &nu::RichLabel::GetAttributedText,
-        "setTextDrawOptions", &nu::RichLabel::SetTextDrawOptions,
-        "getTextDrawOptions", &nu::RichLabel::GetTextDrawOptions);
   }
 };
 
@@ -2550,7 +2535,6 @@ void Initialize(v8::Local<v8::Object> exports) {
           "ProgressBar",       vb::Constructor<nu::ProgressBar>(),
           "GifPlayer",         vb::Constructor<nu::GifPlayer>(),
           "Group",             vb::Constructor<nu::Group>(),
-          "RichLabel",         vb::Constructor<nu::RichLabel>(),
           "Scroll",            vb::Constructor<nu::Scroll>(),
           "Slider",            vb::Constructor<nu::Slider>(),
           "System",            vb::Constructor<nu::System>(),

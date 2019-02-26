@@ -1671,10 +1671,14 @@ struct Type<nu::Label> {
   static void BuildMetaTable(State* state, int metatable) {
     RawSet(state, metatable,
            "create", &CreateOnHeap<nu::Label, const std::string&>,
+           "createwithattributedtext",
+           &CreateOnHeap<nu::Label, nu::AttributedText*>,
            "settext", &nu::Label::SetText,
            "gettext", &nu::Label::GetText,
-           "setalign", &nu::Label::SetAlign,
-           "setvalign", &nu::Label::SetVAlign);
+           "setattributedtext", &nu::Label::SetAttributedText,
+           "getattributedtext", &nu::Label::GetAttributedText,
+           "settextdrawoptions", &nu::Label::SetTextDrawOptions,
+           "gettextdrawoptions", &nu::Label::GetTextDrawOptions);
   }
 };
 
@@ -1746,20 +1750,6 @@ struct Type<nu::Group> {
            "getcontentview", &nu::Group::GetContentView,
            "settitle", &nu::Group::SetTitle,
            "gettitle", &nu::Group::GetTitle);
-  }
-};
-
-template<>
-struct Type<nu::RichLabel> {
-  using base = nu::View;
-  static constexpr const char* name = "yue.RichLabel";
-  static void BuildMetaTable(State* state, int metatable) {
-    RawSet(state, metatable,
-           "create", &CreateOnHeap<nu::RichLabel, nu::AttributedText*>,
-           "setattributedtext", &nu::RichLabel::SetAttributedText,
-           "getattributedtext", &nu::RichLabel::GetAttributedText,
-           "settextdrawoptions", &nu::RichLabel::SetTextDrawOptions,
-           "gettextdrawoptions", &nu::RichLabel::GetTextDrawOptions);
   }
 };
 
@@ -2212,7 +2202,6 @@ extern "C" int luaopen_yue_gui(lua::State* state) {
   BindType<nu::ProgressBar>(state, "ProgressBar");
   BindType<nu::GifPlayer>(state, "GifPlayer");
   BindType<nu::Group>(state, "Group");
-  BindType<nu::RichLabel>(state, "RichLabel");
   BindType<nu::Scroll>(state, "Scroll");
   BindType<nu::Slider>(state, "Slider");
   BindType<nu::System>(state, "System");

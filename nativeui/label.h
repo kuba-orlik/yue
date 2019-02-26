@@ -12,27 +12,51 @@
 
 namespace nu {
 
+class AttributedText;
+
 class NATIVEUI_EXPORT Label : public View {
  public:
-  explicit Label(const std::string& text = "");
+  explicit Label(const std::string& text);
+  explicit Label(AttributedText* text);
 
   // View class name.
   static const char kClassName[];
 
   void SetText(const std::string& text);
   std::string GetText() const;
-  void SetAlign(TextAlign align);
-  void SetVAlign(TextAlign align);
+
+  void SetAttributedText(AttributedText* text);
+  AttributedText* GetAttributedText() const { return text_.get(); }
+
+  void SetTextDrawOptions(const TextDrawOptions& options);
+  const TextDrawOptions& GetTextDrawOptions() const { return options_; }
 
   // View:
   const char* GetClassName() const override;
-  SizeF GetMinimumSize() const override;
+  void SetFont(Font* font) override;
+  void SetColor(Color color) override;
 
  protected:
+  Label();
   ~Label() override;
 
  private:
-  void PlatformSetText(const std::string& text);
+  // Mark the yoga node as dirty.
+  void MarkDirty();
+
+  NativeView PlatformCreate();
+  void PlatformSetAttributedText(AttributedText* text);
+  void PlatformUpdateTextDrawOptions();
+
+  // False if user has passed an AttributedText.
+  bool is_simple_text_ = false;
+
+  // Stored current font and color when showing simple text.
+  Color color_;
+  scoped_refptr<Font> font_;
+
+  TextDrawOptions options_ = {TextAlign::Center, TextAlign::Center, true};
+  scoped_refptr<AttributedText> text_;
 };
 
 }  // namespace nu
