@@ -20,19 +20,13 @@
 #include "nativeui/gfx/geometry/vector2d_conversions.h"
 #include "nativeui/gfx/image.h"
 #include "nativeui/gfx/win/direct_write.h"
+#include "nativeui/gfx/win/screen_win.h"
 #include "nativeui/state.h"
+#include "nativeui/system.h"
 
 namespace nu {
 
 namespace {
-
-inline float AreaOfTriangleFormedByPoints(const PointF& p1,
-                                          const PointF& p2,
-                                          const PointF& p3) {
-  return p1.x() * (p2.y() - p3.y()) +
-         p2.x() * (p3.y() - p1.y()) +
-         p3.x() * (p1.y() - p2.y());
-}
 
 Gdiplus::StringAlignment ToGdi(TextAlign align) {
   switch (align) {
@@ -46,8 +40,8 @@ Gdiplus::StringAlignment ToGdi(TextAlign align) {
 
 }  // namespace
 
-PainterWin::PainterWin(HDC hdc, float scale_factor)
-    : graphics_(hdc) {
+PainterWin::PainterWin(HDC hdc, const Size& size, float scale_factor)
+    : graphics_(hdc), size_(size) {
   Initialize(scale_factor);
 }
 
@@ -134,14 +128,20 @@ void PainterWin::ClipRect(const RectF& rect) {
 }
 
 void PainterWin::Translate(const Vector2dF& offset) {
-  TranslatePixel(ToFlooredVector2d(ScaleVector2d(offset, scale_factor_)));
+  top().matrix = top().matrix *
+                 D2D1::Matrix3x2F::Translation(offset.x(), offset.y());
+  Vector2d po = ToFlooredVector2d(ScaleVector2d(offset, scale_factor_));
+  graphics_.TranslateTransform(po.x(), po.y(), Gdiplus::MatrixOrderAppend);
 }
 
 void PainterWin::Rotate(float angle) {
-  graphics_.RotateTransform(angle / M_PI * 180.0f);
+  float degree = angle / M_PI * 180.0f;
+  top().matrix = D2D1::Matrix3x2F::Rotation(degree) * top().matrix;
+  graphics_.RotateTransform(degree);
 }
 
 void PainterWin::Scale(const Vector2dF& scale) {
+  top().matrix = D2D1::Matrix3x2F::Scale(scale.x(), scale.y()) * top().matrix;
   graphics_.ScaleTransform(scale.x(), scale.y());
 }
 
@@ -211,8 +211,50 @@ void PainterWin::DrawCanvasFromRect(Canvas* canvas, const RectF& src,
 }
 
 void PainterWin::DrawAttributedText(AttributedText* text, const RectF& rect) {
-  DrawAttributedTextPixel(text,
-                          ToEnclosingRect(ScaleRect(rect, scale_factor_)));
+  // Create and setup target.
+  float dpi = GetDPIFromScalingFactor(scale_factor_);
+  if (!d2d1_target_) {
+    ID2D1Factory* d2d1_factory = State::GetCurrent()->GetD2D1Factory();
+    D2D1_RENDER_TARGET_PROPERTIES properties = {
+      D2D1_RENDER_TARGET_TYPE_DEFAULT,
+      {DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED},
+      dpi, dpi,
+      D2D1_RENDER_TARGET_USAGE_NONE,
+      D2D1_FEATURE_LEVEL_DEFAULT,
+    };
+    if (FAILED(d2d1_factory->CreateDCRenderTarget(&properties,
+                                                  d2d1_target_.GetAddressOf())))
+      LOG(ERROR) << "Failed to create D2D1 render target.";
+    else
+      d2d1_target_->SetDpi(dpi, dpi);
+  }
+
+  // Use system text color as fallback color.
+  if (!text_brush_)
+    d2d1_target_->CreateSolidColorBrush(
+        System::GetColor(System::Color::Text).ToD2D1Color(),
+        text_brush_.GetAddressOf());
+
+  // Aquire HDC and bind it, no GDI+ operations from now on.
+  // Note that the HDC is untouched, we directly use GDI+'s transform for D2D1
+  // so we can get best performance and effect.
+  HDC hdc = graphics_.GetHDC();
+  RECT rc = nu::Rect(size_).ToRECT();
+  d2d1_target_->BindDC(hdc, &rc);
+  d2d1_target_->SetTransform(top().matrix);
+
+  IDWriteTextLayout* text_layout = text->GetNative();
+  text_layout->SetMaxWidth(rect.width());
+  text_layout->SetMaxHeight(rect.height());
+
+  d2d1_target_->BeginDraw();
+  d2d1_target_->DrawTextLayout({rect.x(), rect.y()}, text_layout,
+                               text_brush_.Get(), D2D1_DRAW_TEXT_OPTIONS_CLIP);
+  D2D1_TAG tag1, tag2;
+  d2d1_target_->EndDraw(&tag1, &tag2);
+
+  // Done.
+  graphics_.ReleaseHDC(hdc);
 }
 
 TextMetrics PainterWin::MeasureText(const std::string& text, float width,
@@ -229,6 +271,12 @@ TextMetrics PainterWin::MeasureText(const std::string& text, float width,
                           Gdiplus::RectF(0.f, 0.f, width, FLT_MAX),
                           &format, &rect, nullptr, nullptr);
   return { ScaleSize(SizeF(rect.Width, rect.Height), 1.0f / scale_factor_) };
+}
+
+void PainterWin::DrawText(const std::string& text, const RectF& rect,
+                          const TextAttributes& attributes) {
+  DrawTextPixel(base::UTF8ToUTF16(text),
+                ToEnclosingRect(ScaleRect(rect, scale_factor_)), attributes);
 }
 
 void PainterWin::MoveToPixel(const PointF& point) {
@@ -294,6 +342,9 @@ void PainterWin::ClipRectPixel(const nu::Rect& rect) {
 }
 
 void PainterWin::TranslatePixel(const Vector2d& offset) {
+  top().matrix = top().matrix *
+                 D2D1::Matrix3x2F::Translation(offset.x() / scale_factor_,
+                                               offset.y() / scale_factor_);
   graphics_.TranslateTransform(offset.x(), offset.y(),
                                Gdiplus::MatrixOrderAppend);
 }
@@ -312,13 +363,6 @@ void PainterWin::FillRectPixel(const nu::Rect& rect) {
   // Should clear current path.
   use_gdi_current_point_ = true;
   path_.Reset();
-}
-
-void PainterWin::DrawAttributedTextPixel(AttributedText* text,
-                                         const nu::Rect& rect) {
-  HDC hdc = GetHDC();
-  WriteTextLayoutToHDC(hdc, rect, scale_factor_, text->GetNative());
-  ReleaseHDC(hdc);
 }
 
 void PainterWin::DrawTextPixel(const base::string16& text, const nu::Rect& rect,

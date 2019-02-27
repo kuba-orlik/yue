@@ -20,8 +20,8 @@ class LabelImpl : public ViewImpl {
     ViewImpl::Draw(painter, dirty);
 
     auto* label = static_cast<Label*>(delegate());
-    painter->DrawAttributedTextPixel(
-        label->GetAttributedText(), Rect(size_allocation().size()));
+    painter->DrawAttributedText(
+        label->GetAttributedText(), RectF(label->GetBounds().size()));
   }
 };
 

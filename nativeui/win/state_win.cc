@@ -4,6 +4,7 @@
 
 #include "nativeui/state.h"
 
+#include <d2d1.h>
 #include <dwrite.h>
 #include <shellscalingapi.h>
 
@@ -124,8 +125,19 @@ IDWriteFactory* State::GetDWriteFactory() {
   if (!dwrite_factory_) {
     InitializeCOM();
     CreateDWriteFactory(dwrite_factory_.GetAddressOf());
+    CHECK(dwrite_factory_.Get());
   }
   return dwrite_factory_.Get();
+}
+
+ID2D1Factory* State::GetD2D1Factory() {
+  if (!d2d1_factory_) {
+    InitializeCOM();
+    D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED,
+                      d2d1_factory_.GetAddressOf());
+    CHECK(d2d1_factory_.Get());
+  }
+  return d2d1_factory_.Get();
 }
 
 }  // namespace nu

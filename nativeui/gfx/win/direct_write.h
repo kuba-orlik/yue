@@ -12,20 +12,15 @@
 
 namespace nu {
 
-class Rect;
+struct TextFormat;
 
 // Create a DirectWrite factory.
 void CreateDWriteFactory(IDWriteFactory** factory);
 
 // Create a text layout with default font.
 bool CreateTextLayout(const base::string16& text,
+                      const TextFormat& format,
                       IDWriteTextLayout** text_layout);
-
-// Write text layout to HDC.
-bool WriteTextLayoutToHDC(HDC hdc,
-                          const nu::Rect& rect,
-                          float scale_factor,
-                          IDWriteTextLayout* text_layout);
 
 }  // namespace nu
 

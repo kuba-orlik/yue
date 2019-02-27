@@ -5,129 +5,42 @@
 
 #include "nativeui/gfx/win/direct_write.h"
 
+#include <d2d1.h>
 #include <shlwapi.h>
 #include <wrl/client.h>
 
 #include "base/debug/alias.h"
-#include "nativeui/app.h"
 #include "nativeui/gfx/font.h"
-#include "nativeui/gfx/geometry/rect.h"
+#include "nativeui/gfx/text.h"
 #include "nativeui/state.h"
 
 namespace nu {
 
 namespace {
 
-class TextRenderer : public IDWriteTextRenderer {
- public:
-  TextRenderer(IDWriteBitmapRenderTarget* target,
-               IDWriteRenderingParams* rendering_params,
-               float scale_factor)
-      : target_(target),
-        rendering_params_(rendering_params),
-        scale_factor_(scale_factor) {}
-
-  ~TextRenderer() {}
-
-  // IDWriteTextRenderer:
-  HRESULT __stdcall DrawGlyphRun(
-      void* clientDrawingContext,
-      FLOAT baselineOriginX,
-      FLOAT baselineOriginY,
-      DWRITE_MEASURING_MODE measuringMode,
-      const DWRITE_GLYPH_RUN* glyphRun,
-      const DWRITE_GLYPH_RUN_DESCRIPTION* glyphRunDescription,
-      IUnknown* clientDrawingEffect) override {
-    RECT dirty = {0};
-    return target_->DrawGlyphRun(baselineOriginX,
-                                 baselineOriginY,
-                                 measuringMode,
-                                 glyphRun,
-                                 rendering_params_,
-                                 RGB(0, 0, 0),
-                                 &dirty);
+inline DWRITE_TEXT_ALIGNMENT ToDWriteType(TextAlign align) {
+  switch (align) {
+    case TextAlign::Center:
+      return DWRITE_TEXT_ALIGNMENT_CENTER;
+    case TextAlign::End:
+      return DWRITE_TEXT_ALIGNMENT_TRAILING;
+    case TextAlign::Start:
+    default:
+      return DWRITE_TEXT_ALIGNMENT_LEADING;
   }
+}
 
-  HRESULT __stdcall DrawUnderline(
-      void* clientDrawingContext,
-      FLOAT baselineOriginX,
-      FLOAT baselineOriginY,
-      const DWRITE_UNDERLINE* underline,
-      IUnknown* clientDrawingEffect) override {
-    return E_NOTIMPL;
+inline DWRITE_PARAGRAPH_ALIGNMENT ToDWriteType(TextAlign align, bool) {
+  switch (align) {
+    case TextAlign::Center:
+      return DWRITE_PARAGRAPH_ALIGNMENT_CENTER;
+    case TextAlign::End:
+      return DWRITE_PARAGRAPH_ALIGNMENT_FAR;
+    case TextAlign::Start:
+    default:
+      return DWRITE_PARAGRAPH_ALIGNMENT_NEAR;
   }
-
-  HRESULT __stdcall DrawStrikethrough(
-      void* clientDrawingContext,
-      FLOAT baselineOriginX,
-      FLOAT baselineOriginY,
-      const DWRITE_STRIKETHROUGH* strikethrough,
-      IUnknown* clientDrawingEffect) override {
-    return E_NOTIMPL;
-  }
-
-  HRESULT __stdcall DrawInlineObject(
-      void* clientDrawingContext,
-      FLOAT originX,
-      FLOAT originY,
-      IDWriteInlineObject* inlineObject,
-      BOOL isSideways,
-      BOOL isRightToLeft,
-      IUnknown* clientDrawingEffect) override {
-    return E_NOTIMPL;
-  }
-
-  // IDWritePixelSnapping:
-  HRESULT __stdcall IsPixelSnappingDisabled(
-      void* clientDrawingContext,
-      BOOL* isDisabled) override {
-    *isDisabled = FALSE;
-    return S_OK;
-  }
-
-  HRESULT __stdcall GetCurrentTransform(
-      void* clientDrawingContext,
-      DWRITE_MATRIX* transform) override {
-    return target_->GetCurrentTransform(transform);
-  }
-
-  HRESULT __stdcall GetPixelsPerDip(
-      void* clientDrawingContext,
-      FLOAT* pixelsPerDip) override {
-    *pixelsPerDip = target_->GetPixelsPerDip();
-    return S_OK;
-  }
-
-  // IUnknown:
-  HRESULT __stdcall QueryInterface(const IID& riid, void** ppvObject) override {
-    const QITAB QITable[] = {
-      QITABENT(TextRenderer, IDWriteTextRenderer),
-      QITABENT(TextRenderer, IDWritePixelSnapping),
-      { 0 },
-    };
-    return QISearch(this, QITable, riid, ppvObject);
-  }
-
-  ULONG __stdcall AddRef() override {
-    return InterlockedIncrement(&ref_);
-  }
-
-  ULONG __stdcall Release() override {
-    auto cref = InterlockedDecrement(&ref_);
-    if (cref == 0)
-      delete this;
-    return cref;
-  }
-
- private:
-  IDWriteBitmapRenderTarget* target_;  // weak ref
-  IDWriteRenderingParams* rendering_params_;  // weak ref
-  float scale_factor_;
-
-  LONG ref_ = 0;
-
-  DISALLOW_COPY_AND_ASSIGN(TextRenderer);
-};
+}
 
 }  // namespace
 
@@ -145,11 +58,12 @@ void CreateDWriteFactory(IDWriteFactory** factory) {
 }
 
 bool CreateTextLayout(const base::string16& text,
+                      const TextFormat& format,
                       IDWriteTextLayout** text_layout) {
   IDWriteFactory* factory = State::GetCurrent()->GetDWriteFactory();
 
   scoped_refptr<Font> default_font = App::GetCurrent()->GetDefaultFont();
-  Microsoft::WRL::ComPtr<IDWriteTextFormat> format;
+  Microsoft::WRL::ComPtr<IDWriteTextFormat> dformat;
   if (FAILED(factory->CreateTextFormat(default_font->GetName16().c_str(),
                                        nullptr,
                                        DWRITE_FONT_WEIGHT_NORMAL,
@@ -157,54 +71,25 @@ bool CreateTextLayout(const base::string16& text,
                                        DWRITE_FONT_STRETCH_NORMAL,
                                        default_font->GetSize(),
                                        L"",
-                                       format.GetAddressOf()))) {
+                                       dformat.GetAddressOf()))) {
     return false;
+  }
+
+  dformat->SetTextAlignment(ToDWriteType(format.align));
+  dformat->SetParagraphAlignment(ToDWriteType(format.valign, true));
+  dformat->SetWordWrapping(format.wrap ? DWRITE_WORD_WRAPPING_WRAP
+                                       : DWRITE_WORD_WRAPPING_NO_WRAP);
+  if (format.ellipsis) {
+    Microsoft::WRL::ComPtr<IDWriteInlineObject> ellipsis;
+    factory->CreateEllipsisTrimmingSign(dformat.Get(), ellipsis.GetAddressOf());
+    DWRITE_TRIMMING trimming = {DWRITE_TRIMMING_GRANULARITY_CHARACTER, 0, 0};
+    dformat->SetTrimming(&trimming, ellipsis.Get());
   }
 
   return SUCCEEDED(factory->CreateTextLayout(text.c_str(),
                                              static_cast<UINT32>(text.size()),
-                                             format.Get(), FLT_MAX, FLT_MAX,
+                                             dformat.Get(), FLT_MAX, FLT_MAX,
                                              text_layout));
-}
-
-bool WriteTextLayoutToHDC(HDC hdc,
-                          const nu::Rect& rect,
-                          float scale_factor,
-                          IDWriteTextLayout* text_layout) {
-  IDWriteFactory* factory = State::GetCurrent()->GetDWriteFactory();
-
-  Microsoft::WRL::ComPtr<IDWriteGdiInterop> interop;
-  if (FAILED(factory->GetGdiInterop(interop.GetAddressOf())))
-    return false;
-
-  Microsoft::WRL::ComPtr<IDWriteBitmapRenderTarget> target;
-  if (FAILED(interop->CreateBitmapRenderTarget(hdc,
-                                               rect.width(), rect.height(),
-                                               target.GetAddressOf())))
-    return false;
-
-  if (FAILED(target->SetPixelsPerDip(scale_factor)))
-    return false;
-
-  Microsoft::WRL::ComPtr<IDWriteRenderingParams> rendering_params;
-  if (FAILED(factory->CreateRenderingParams(rendering_params.GetAddressOf())))
-    return false;
-
-  HDC memdc = target->GetMemoryDC();
-  BitBlt(memdc, 0, 0, rect.width(), rect.height(),
-         hdc, rect.x(), rect.y(), SRCCOPY);
-
-  text_layout->SetMaxWidth(std::ceil(rect.width() / scale_factor));
-  text_layout->SetMaxHeight(std::ceil(rect.height() / scale_factor));
-
-  scoped_refptr<TextRenderer> renderer =
-      new TextRenderer(target.Get(), rendering_params.Get(), scale_factor);
-  if (FAILED(text_layout->Draw(nullptr, renderer.get(), 0, 0)))
-    return false;
-
-  BitBlt(hdc, 0, 0, rect.width(), rect.height(),
-         memdc, rect.x(), rect.y(), SRCCOPY | NOMIRRORBITMAP);
-  return true;
 }
 
 }  // namespace nu

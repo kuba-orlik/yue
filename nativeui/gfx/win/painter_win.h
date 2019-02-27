@@ -5,6 +5,8 @@
 #ifndef NATIVEUI_GFX_WIN_PAINTER_WIN_H_
 #define NATIVEUI_GFX_WIN_PAINTER_WIN_H_
 
+#include <wrl/client.h>
+
 #include <stack>
 #include <string>
 
@@ -17,7 +19,7 @@ namespace nu {
 class PainterWin : public Painter {
  public:
   // Paint on the HDC.
-  PainterWin(HDC hdc, float scale_factor);
+  PainterWin(HDC hdc, const Size& size, float scale_factor);
   // Paint on the bitmap.
   PainterWin(NativeBitmap bitmap, float scale_factor);
   // PainterWin should be created on stack for best performance.
@@ -66,6 +68,13 @@ class PainterWin : public Painter {
   void DrawAttributedText(AttributedText* text, const RectF& rect) override;
   TextMetrics MeasureText(const std::string& text, float width,
                           const TextAttributes& attributes) override;
+  // Unlike other platforms that drawing attributed text is basically the same
+  // with drawing normal text, on Windows attributed text is drawn with the
+  // DirectWrite and we have to create a bunch of COM objects everytime.
+  //
+  // So we still use GDI+ for drawing simple text for performance.
+  void DrawText(const std::string& text, const RectF& rect,
+                const TextAttributes& attributes) override;
 
   // The pixel versions.
   void MoveToPixel(const PointF& point);
@@ -80,7 +89,6 @@ class PainterWin : public Painter {
   void TranslatePixel(const Vector2d& offset);
   void StrokeRectPixel(const nu::Rect& rect);
   void FillRectPixel(const nu::Rect& rect);
-  void DrawAttributedTextPixel(AttributedText* text, const nu::Rect& rect);
   void DrawTextPixel(const base::string16& text, const nu::Rect& rect,
                      const TextAttributes& attributes);
   void DrawTextPixel(const base::string16& text, const PointF& point,
@@ -102,11 +110,18 @@ class PainterWin : public Painter {
     PainterState(float line_width, Color stroke_color, Color fill_color)
         : line_width(line_width),
           stroke_color(stroke_color),
-          fill_color(fill_color) {}
+          fill_color(fill_color),
+          state(0),
+          matrix(1.f, 0, 0, 1.f, 0, 0) {}
     float line_width;
     Color stroke_color;
     Color fill_color;
-    Gdiplus::GraphicsState state = 0;
+    Gdiplus::GraphicsState state;
+
+    // D2D1 uses DIP metrics, so under high DPI the transformation of GDI+
+    // would be wrong since the latter uses pixels, to work around this we
+    // save a copy of matrix that uses DIP metrics.
+    D2D1::Matrix3x2F matrix;
   };
 
   // Return the top state.
@@ -117,6 +132,12 @@ class PainterWin : public Painter {
 
   Gdiplus::Graphics graphics_;
 
+  // The D2D1 render target, created on request.
+  Microsoft::WRL::ComPtr<ID2D1DCRenderTarget> d2d1_target_;
+
+  // Cached brush for default text.
+  Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> text_brush_;
+
   // Current path.
   Gdiplus::GraphicsPath path_;
   // Current position, used when gdi+ does not have one.
@@ -124,6 +145,7 @@ class PainterWin : public Painter {
   // Whether gdi+ has a record of current point.
   bool use_gdi_current_point_;
 
+  Size size_;
   float scale_factor_;
 };
 

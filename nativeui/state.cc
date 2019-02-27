@@ -5,6 +5,7 @@
 #include "nativeui/state.h"
 
 #if defined(OS_WIN)
+#include <d2d1.h>
 #include <dwrite.h>
 #endif
 
