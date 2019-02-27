@@ -12,12 +12,14 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/win/scoped_gdi_object.h"
 #include "base/win/scoped_select_object.h"
+#include "nativeui/gfx/attributed_text.h"
 #include "nativeui/gfx/canvas.h"
 #include "nativeui/gfx/font.h"
 #include "nativeui/gfx/geometry/point_conversions.h"
 #include "nativeui/gfx/geometry/rect_conversions.h"
 #include "nativeui/gfx/geometry/vector2d_conversions.h"
 #include "nativeui/gfx/image.h"
+#include "nativeui/gfx/win/direct_write.h"
 #include "nativeui/state.h"
 
 namespace nu {
@@ -208,6 +210,12 @@ void PainterWin::DrawCanvasFromRect(Canvas* canvas, const RectF& src,
                       Gdiplus::UnitPixel);
 }
 
+void PainterWin::DrawAttributedText(AttributedText* text, const RectF& rect,
+                                    const TextDrawOptions& options) {
+  DrawAttributedTextPixel(
+      text, ToEnclosingRect(ScaleRect(rect, scale_factor_)), options);
+}
+
 TextMetrics PainterWin::MeasureText(const std::string& text, float width,
                                     const TextAttributes& attributes) {
   if (width >= 0)
@@ -222,12 +230,6 @@ TextMetrics PainterWin::MeasureText(const std::string& text, float width,
                           Gdiplus::RectF(0.f, 0.f, width, FLT_MAX),
                           &format, &rect, nullptr, nullptr);
   return { ScaleSize(SizeF(rect.Width, rect.Height), 1.0f / scale_factor_) };
-}
-
-void PainterWin::DrawText(const std::string& text, const RectF& rect,
-                          const TextAttributes& attributes) {
-  DrawTextPixel(base::UTF8ToUTF16(text),
-                ToEnclosingRect(ScaleRect(rect, scale_factor_)), attributes);
 }
 
 void PainterWin::MoveToPixel(const PointF& point) {
@@ -311,6 +313,14 @@ void PainterWin::FillRectPixel(const nu::Rect& rect) {
   // Should clear current path.
   use_gdi_current_point_ = true;
   path_.Reset();
+}
+
+void PainterWin::DrawAttributedTextPixel(AttributedText* text,
+                                         const nu::Rect& rect,
+                                         const TextDrawOptions& options) {
+  HDC hdc = GetHDC();
+  WriteTextLayoutToHDC(hdc, rect, scale_factor_, text->GetNative());
+  ReleaseHDC(hdc);
 }
 
 void PainterWin::DrawTextPixel(const base::string16& text, const nu::Rect& rect,

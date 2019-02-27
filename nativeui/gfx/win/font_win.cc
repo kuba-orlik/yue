@@ -54,12 +54,16 @@ Font::~Font() {
   delete font_;
 }
 
-std::string Font::GetName() const {
+std::wstring Font::GetName16() const {
   Gdiplus::FontFamily family;
   font_->GetFamily(&family);
   WCHAR buffer[LF_FACESIZE] = {0};
   family.GetFamilyName(buffer);
-  return base::UTF16ToUTF8(buffer);
+  return buffer;
+}
+
+std::string Font::GetName() const {
+  return base::UTF16ToUTF8(GetName16());
 }
 
 float Font::GetSize() const {

@@ -42,6 +42,11 @@ class NATIVEUI_EXPORT AttributedText : public base::RefCounted<AttributedText> {
   void PlatformSetColorFor(Color color, int start, int end);
 
   NativeAttributedText text_;
+
+#if defined(OS_WIN)
+  // IDWriteTextLayout does not provide a way to get text.
+  base::string16 original_text_;
+#endif
 };
 
 }  // namespace nu

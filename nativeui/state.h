@@ -10,6 +10,10 @@
 #include "base/memory/ref_counted.h"
 #include "nativeui/app.h"
 
+#if defined(OS_WIN)
+#include <wrl/client.h>
+#endif
+
 typedef struct YGConfig *YGConfigRef;
 
 #if defined(OS_WIN)
@@ -18,7 +22,12 @@ namespace win {
 class ScopedCOMInitializer;
 }
 }
-#endif
+
+#ifndef __IDWriteFactory_FWD_DEFINED__
+#define __IDWriteFactory_FWD_DEFINED__
+typedef struct IDWriteFactory IDWriteFactory;
+#endif  // __IDWriteFactory_FWD_DEFINED__
+#endif  // defined(OS_WIN)
 
 namespace nu {
 
@@ -49,6 +58,7 @@ class NATIVEUI_EXPORT State {
   NativeTheme* GetNativeTheme();
   TrayHost* GetTrayHost();
   UINT GetNextCommandID();
+  IDWriteFactory* GetDWriteFactory();
 #endif
 
   // Internal: Return the default yoga config.
@@ -65,6 +75,7 @@ class NATIVEUI_EXPORT State {
   std::unique_ptr<SubwinHolder> subwin_holder_;
   std::unique_ptr<NativeTheme> native_theme_;
   std::unique_ptr<TrayHost> tray_host_;
+  Microsoft::WRL::ComPtr<IDWriteFactory> dwrite_factory_;
 
   // Next ID for custom WM_COMMAND items, the number came from:
   // https://msdn.microsoft.com/en-us/library/11861byt.aspx

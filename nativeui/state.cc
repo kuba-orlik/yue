@@ -4,6 +4,10 @@
 
 #include "nativeui/state.h"
 
+#if defined(OS_WIN)
+#include <dwrite.h>
+#endif
+
 #include "base/lazy_instance.h"
 #include "base/threading/thread_local.h"
 #include "nativeui/protocol_job.h"

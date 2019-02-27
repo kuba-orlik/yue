@@ -4,12 +4,14 @@
 
 #include "nativeui/state.h"
 
+#include <dwrite.h>
 #include <shellscalingapi.h>
 
 #include "base/logging.h"
 #include "base/win/scoped_com_initializer.h"
 #include "base/win/windows_version.h"
 #include "nativeui/gfx/screen.h"
+#include "nativeui/gfx/win/direct_write.h"
 #include "nativeui/gfx/win/native_theme.h"
 #include "nativeui/win/util/class_registrar.h"
 #include "nativeui/win/util/gdiplus_holder.h"
@@ -116,6 +118,14 @@ TrayHost* State::GetTrayHost() {
 
 UINT State::GetNextCommandID() {
   return next_command_id_++;
+}
+
+IDWriteFactory* State::GetDWriteFactory() {
+  if (!dwrite_factory_) {
+    InitializeCOM();
+    CreateDWriteFactory(dwrite_factory_.GetAddressOf());
+  }
+  return dwrite_factory_.Get();
 }
 
 }  // namespace nu
