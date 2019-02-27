@@ -20,7 +20,7 @@ enum class TextAlign {
 };
 
 // Options for drawing text.
-struct NATIVEUI_EXPORT TextDrawOptions {
+struct NATIVEUI_EXPORT TextFormat {
   TextAlign align = TextAlign::Start;
   TextAlign valign = TextAlign::Start;
   bool wrap = true;
@@ -28,7 +28,7 @@ struct NATIVEUI_EXPORT TextDrawOptions {
 };
 
 // Attributes used for drawing the text.
-struct NATIVEUI_EXPORT TextAttributes : public TextDrawOptions {
+struct NATIVEUI_EXPORT TextAttributes : public TextFormat {
   // Full constructor.
   TextAttributes(Font* font,
                  Color color,

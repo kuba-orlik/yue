@@ -11,7 +11,6 @@
 #include "nativeui/gfx/font.h"
 #include "nativeui/gfx/geometry/rect_f.h"
 #include "nativeui/gfx/geometry/size_f.h"
-#include "nativeui/gfx/gtk/text_gtk.h"
 #include "nativeui/gfx/text.h"
 
 namespace nu {
@@ -36,19 +35,40 @@ void FillPangoAttributeIndex(PangoAttribute* attr, PangoLayout* layout,
 
 }  // namespace
 
-AttributedText::AttributedText(const std::string& text) {
+AttributedText::AttributedText(const std::string& text,
+                               const TextFormat& format)
+    : format_(format) {
   static PangoContext* context = nullptr;
   if (!context) {
     context = gdk_pango_context_get_for_screen(gdk_screen_get_default());
     pango_context_set_language(context, pango_language_get_default());
   }
   text_ = pango_layout_new(context);
+
   // Set text.
   pango_layout_set_text(text_, text.c_str(), text.size());
+
   // Set attributes.
   PangoAttrList* attrs = pango_attr_list_new();
   pango_layout_set_attributes(text_, attrs);
   pango_attr_list_unref(attrs);
+
+  // Set format.
+  pango_layout_set_ellipsize(text_,
+                             format.ellipsis ? PANGO_ELLIPSIZE_END
+                                             : PANGO_ELLIPSIZE_NONE);
+
+  if (format.align == TextAlign::Start)
+    pango_layout_set_alignment(text_, PANGO_ALIGN_LEFT);
+  else if (format.align == TextAlign::Center)
+    pango_layout_set_alignment(text_, PANGO_ALIGN_CENTER);
+  else
+    pango_layout_set_alignment(text_, PANGO_ALIGN_RIGHT);
+
+  if (format.wrap)
+    pango_layout_set_wrap(text_, PANGO_WRAP_WORD_CHAR);
+  else
+    pango_layout_set_width(text_, -1);
 }
 
 AttributedText::~AttributedText() {
@@ -74,9 +94,11 @@ void AttributedText::PlatformSetColorFor(Color color, int start, int end) {
   pango_attr_list_insert(attrs, fg_attr);  // ownership taken
 }
 
-RectF AttributedText::GetBoundsFor(const SizeF& size,
-                                   const TextDrawOptions& options) {
-  SetupPangoLayout(text_, size, options);
+RectF AttributedText::GetBoundsFor(const SizeF& size) const {
+  if (format_.wrap) {
+    pango_layout_set_width(text_, size.width() * PANGO_SCALE);
+    pango_layout_set_height(text_, size.height() * PANGO_SCALE);
+  }
   int width, height;
   pango_layout_get_pixel_size(text_, &width, &height);
   return RectF(0, 0, width, height);

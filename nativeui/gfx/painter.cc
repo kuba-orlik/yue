@@ -14,10 +14,10 @@ Painter::~Painter() {}
 
 void Painter::DrawText(const std::string& str, const RectF& rect,
                        const TextAttributes& attributes) {
-  scoped_refptr<AttributedText> text(new AttributedText(str));
+  scoped_refptr<AttributedText> text(new AttributedText(str, attributes));
   text->SetFont(attributes.font.get());
   text->SetColor(attributes.color);
-  DrawAttributedText(text.get(), rect, attributes);
+  DrawAttributedText(text.get(), rect);
 }
 
 }  // namespace nu

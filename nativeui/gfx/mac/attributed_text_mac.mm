@@ -22,9 +22,11 @@ inline int IndexToLength(NSAttributedString* str, int start, int end) {
 
 }  // namespace
 
-AttributedText::AttributedText(const std::string& text)
+AttributedText::AttributedText(const std::string& text,
+                               const TextFormat& format)
     : text_([[NSMutableAttributedString alloc]
-                initWithString:base::SysUTF8ToNSString(text)]) {}
+                initWithString:base::SysUTF8ToNSString(text)]),
+      format_(format) {}
 
 AttributedText::~AttributedText() {
   [text_ release];
@@ -42,17 +44,16 @@ void AttributedText::PlatformSetColorFor(Color color, int start, int end) {
                 range:NSMakeRange(start, IndexToLength(text_, start, end))];
 }
 
-RectF AttributedText::GetBoundsFor(const SizeF& size,
-                                   const TextDrawOptions& options) {
+RectF AttributedText::GetBoundsFor(const SizeF& size) const {
   int draw_options = 0;
-  if (options.wrap)
+  if (format_.wrap)
     draw_options |= NSStringDrawingUsesLineFragmentOrigin;
-  if (options.ellipsis)
+  if (format_.ellipsis)
     draw_options |= NSStringDrawingTruncatesLastVisibleLine;
-  if (options.wrap || options.ellipsis) {
+  if (format_.wrap || format_.ellipsis) {
     // The height returned by boundingRectWithSize can not be larger than passed
     // size by default, which is not really expected behavior.
-    NSSize bsize = options.ellipsis ? size.ToCGSize()
+    NSSize bsize = format_.ellipsis ? size.ToCGSize()
                                     : NSMakeSize(size.width(), FLT_MAX);
     return RectF([text_ boundingRectWithSize:bsize
                                      options:draw_options]);

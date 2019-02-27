@@ -14,12 +14,11 @@ namespace nu {
 namespace {
 
 YGSize MeasureLabel(YGNodeRef node,
-                        float width, YGMeasureMode mode,
-                        float height, YGMeasureMode height_mode) {
+                    float width, YGMeasureMode mode,
+                    float height, YGMeasureMode height_mode) {
   auto* label = static_cast<Label*>(YGNodeGetContext(node));
   SizeF size = label->GetAttributedText()
-                    ->GetBoundsFor(SizeF(width, height),
-                                   label->GetTextDrawOptions()).size();
+                    ->GetBoundsFor(SizeF(width, height)).size();
   size.Enlarge(1, 1);  // leave space for border
   return {std::ceil(size.width()), std::ceil(size.height())};
 }
@@ -51,7 +50,8 @@ Label::~Label() {
 
 void Label::SetText(const std::string& text) {
   // Apply current font and color.
-  auto* attributed_text = new AttributedText(text);
+  auto* attributed_text = new AttributedText(
+      text, {TextAlign::Center, TextAlign::Center, true, false});
   attributed_text->SetFont(font_.get());
   attributed_text->SetColor(color_);
 
@@ -67,12 +67,6 @@ void Label::SetAttributedText(AttributedText* text) {
   is_simple_text_ = false;
   PlatformSetAttributedText(text);
   text_ = text;
-  MarkDirty();
-}
-
-void Label::SetTextDrawOptions(const TextDrawOptions& options) {
-  options_ = options;
-  PlatformUpdateTextDrawOptions();
   MarkDirty();
 }
 

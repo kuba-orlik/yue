@@ -20,9 +20,8 @@ class LabelImpl : public ViewImpl {
     ViewImpl::Draw(painter, dirty);
 
     auto* label = static_cast<Label*>(delegate());
-    painter->DrawAttributedTextPixel(label->GetAttributedText(),
-                                     Rect(size_allocation().size()),
-                                     label->GetTextDrawOptions());
+    painter->DrawAttributedTextPixel(
+        label->GetAttributedText(), Rect(size_allocation().size()));
   }
 };
 
@@ -33,9 +32,6 @@ NativeView Label::PlatformCreate() {
 }
 
 void Label::PlatformSetAttributedText(AttributedText* text) {
-}
-
-void Label::PlatformUpdateTextDrawOptions() {
 }
 
 }  // namespace nu

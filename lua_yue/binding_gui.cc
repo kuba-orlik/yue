@@ -221,12 +221,15 @@ struct Type<nu::AttributedText> {
   static constexpr const char* name = "yue.AttributedText";
   static void BuildMetaTable(State* state, int metatable) {
     RawSet(state, metatable,
-           "create", &CreateOnHeap<nu::AttributedText, const std::string&>,
+           "create", &CreateOnHeap<nu::AttributedText,
+                                   const std::string&,
+                                   const nu::TextFormat&>,
            "setfont", &nu::AttributedText::SetFont,
            "setfontfor", &nu::AttributedText::SetFontFor,
            "setcolor", &nu::AttributedText::SetColor,
            "setcolorfor", &nu::AttributedText::SetColorFor,
            "getboundsfor", &nu::AttributedText::GetBoundsFor,
+           "getformat", &nu::AttributedText::GetFormat,
            "gettext", &nu::AttributedText::GetText);
   }
 };
@@ -671,9 +674,9 @@ struct Type<nu::TextAlign> {
 };
 
 template<>
-struct Type<nu::TextDrawOptions> {
-  static constexpr const char* name = "yue.TextDrawOptions";
-  static inline bool To(State* state, int index, nu::TextDrawOptions* out) {
+struct Type<nu::TextFormat> {
+  static constexpr const char* name = "yue.TextFormat";
+  static inline bool To(State* state, int index, nu::TextFormat* out) {
     if (GetType(state, index) != LuaType::Table)
       return false;
     RawGetAndPop(state, index, "align", &out->align);
@@ -682,7 +685,7 @@ struct Type<nu::TextDrawOptions> {
     RawGetAndPop(state, index, "ellipsis", &out->ellipsis);
     return true;
   }
-  static inline void Push(State* state, const nu::TextDrawOptions& options) {
+  static inline void Push(State* state, const nu::TextFormat& options) {
     NewTable(state, 0, 4);
     RawSet(state, -1, "align", options.align);
     RawSet(state, -1, "valign", options.valign);
@@ -695,7 +698,7 @@ template<>
 struct Type<nu::TextAttributes> {
   static constexpr const char* name = "yue.TextAttributes";
   static inline bool To(State* state, int index, nu::TextAttributes* out) {
-    if (!Type<nu::TextDrawOptions>::To(state, index, out))
+    if (!Type<nu::TextFormat>::To(state, index, out))
       return false;
     nu::Font* font;
     if (RawGetAndPop(state, index, "font", &font))
@@ -1676,9 +1679,7 @@ struct Type<nu::Label> {
            "settext", &nu::Label::SetText,
            "gettext", &nu::Label::GetText,
            "setattributedtext", &nu::Label::SetAttributedText,
-           "getattributedtext", &nu::Label::GetAttributedText,
-           "settextdrawoptions", &nu::Label::SetTextDrawOptions,
-           "gettextdrawoptions", &nu::Label::GetTextDrawOptions);
+           "getattributedtext", &nu::Label::GetAttributedText);
   }
 };
 

@@ -63,8 +63,7 @@ class PainterWin : public Painter {
   void DrawCanvas(Canvas* canvas, const RectF& rect) override;
   void DrawCanvasFromRect(Canvas* canvas, const RectF& src,
                           const RectF& dest) override;
-  void DrawAttributedText(AttributedText* text, const RectF& rect,
-                          const TextDrawOptions& options) override;
+  void DrawAttributedText(AttributedText* text, const RectF& rect) override;
   TextMetrics MeasureText(const std::string& text, float width,
                           const TextAttributes& attributes) override;
 
@@ -81,8 +80,7 @@ class PainterWin : public Painter {
   void TranslatePixel(const Vector2d& offset);
   void StrokeRectPixel(const nu::Rect& rect);
   void FillRectPixel(const nu::Rect& rect);
-  void DrawAttributedTextPixel(AttributedText* text, const nu::Rect& rect,
-                               const TextDrawOptions& options);
+  void DrawAttributedTextPixel(AttributedText* text, const nu::Rect& rect);
   void DrawTextPixel(const base::string16& text, const nu::Rect& rect,
                      const TextAttributes& attributes);
   void DrawTextPixel(const base::string16& text, const PointF& point,

@@ -14,7 +14,6 @@
 #include "nativeui/gfx/attributed_text.h"
 #include "nativeui/gfx/canvas.h"
 #include "nativeui/gfx/font.h"
-#include "nativeui/gfx/gtk/text_gtk.h"
 #include "nativeui/gfx/image.h"
 
 namespace nu {
@@ -190,26 +189,23 @@ void PainterGtk::DrawCanvasFromRect(Canvas* canvas, const RectF& src,
   cairo_restore(context_);
 }
 
-void PainterGtk::DrawAttributedText(AttributedText* text, const RectF& rect,
-                                    const TextDrawOptions& options) {
-  // Apply options.
-  PangoLayout* layout = text->GetNative();
-  SetupPangoLayout(layout, rect.size(), options);
-
+void PainterGtk::DrawAttributedText(AttributedText* text, const RectF& rect) {
   // Don't draw outside.
   cairo_save(context_);
   ClipRect(rect);
 
   // Vertical alignment.
-  RectF bounds = text->GetBoundsFor(rect.size(), options);
+  RectF bounds = text->GetBoundsFor(rect.size());
   RectF target = rect;
-  if (options.valign == TextAlign::Center)
+  TextAlign valign = text->GetFormat().valign;
+  if (valign == TextAlign::Center)
     target.Inset(0.f, (rect.height() - bounds.height()) / 2);
-  else if (options.valign == TextAlign::End)
+  else if (valign == TextAlign::End)
     target.Inset(0.f, rect.height() - bounds.height(), 0.f, 0.f);
   cairo_move_to(context_, target.x(), target.y());
 
   // Draw.
+  PangoLayout* layout = text->GetNative();
   pango_cairo_show_layout(context_, layout);
   cairo_restore(context_);
 }

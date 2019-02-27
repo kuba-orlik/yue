@@ -210,10 +210,9 @@ void PainterWin::DrawCanvasFromRect(Canvas* canvas, const RectF& src,
                       Gdiplus::UnitPixel);
 }
 
-void PainterWin::DrawAttributedText(AttributedText* text, const RectF& rect,
-                                    const TextDrawOptions& options) {
-  DrawAttributedTextPixel(
-      text, ToEnclosingRect(ScaleRect(rect, scale_factor_)), options);
+void PainterWin::DrawAttributedText(AttributedText* text, const RectF& rect) {
+  DrawAttributedTextPixel(text,
+                          ToEnclosingRect(ScaleRect(rect, scale_factor_)));
 }
 
 TextMetrics PainterWin::MeasureText(const std::string& text, float width,
@@ -316,8 +315,7 @@ void PainterWin::FillRectPixel(const nu::Rect& rect) {
 }
 
 void PainterWin::DrawAttributedTextPixel(AttributedText* text,
-                                         const nu::Rect& rect,
-                                         const TextDrawOptions& options) {
+                                         const nu::Rect& rect) {
   HDC hdc = GetHDC();
   WriteTextLayoutToHDC(hdc, rect, scale_factor_, text->GetNative());
   ReleaseHDC(hdc);

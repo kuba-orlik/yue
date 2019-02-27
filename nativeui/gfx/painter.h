@@ -85,8 +85,7 @@ class NATIVEUI_EXPORT Painter {
                                   const RectF& dest) = 0;
 
   // Draw attributed |text|.
-  virtual void DrawAttributedText(AttributedText* text, const RectF& rect,
-                                  const TextDrawOptions& options) = 0;
+  virtual void DrawAttributedText(AttributedText* text, const RectF& rect) = 0;
 
   // Return the space taken to paint the full string.
   virtual TextMetrics MeasureText(const std::string& text, float width,

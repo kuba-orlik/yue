@@ -33,21 +33,21 @@ NativeView Label::PlatformCreate() {
 
 void Label::PlatformSetAttributedText(AttributedText* text) {
   auto* label = GTK_LABEL(gtk_bin_get_child(GTK_BIN(GetNative())));
+
+  // Text and styles.
   PangoLayout* layout = text->GetNative();
   gtk_label_set_text(label, pango_layout_get_text(layout));
   gtk_label_set_attributes(label, pango_layout_get_attributes(layout));
-  gtk_widget_set_size_request(GTK_WIDGET(label), 0, 0);
-}
 
-void Label::PlatformUpdateTextDrawOptions() {
-  auto* label = GTK_LABEL(gtk_bin_get_child(GTK_BIN(GetNative())));
-  gtk_label_set_line_wrap(label, options_.wrap);
+  // Format.
+  const auto& format = text->GetFormat();
+  gtk_label_set_line_wrap(label, format.wrap);
   gtk_label_set_ellipsize(GTK_LABEL(label),
-                          options_.ellipsis ? PANGO_ELLIPSIZE_END
-                                            : PANGO_ELLIPSIZE_NONE);
+                          format.ellipsis ? PANGO_ELLIPSIZE_END
+                                          : PANGO_ELLIPSIZE_NONE);
   gtk_misc_set_alignment(GTK_MISC(label),
-                         AlignToFloat(options_.align),
-                         AlignToFloat(options_.valign));
+                         AlignToFloat(format.align),
+                         AlignToFloat(format.valign));
 }
 
 }  // namespace nu

@@ -25,8 +25,7 @@
 
   auto* label = static_cast<nu::Label*>([self shell]);
   painter.DrawAttributedText(label->GetAttributedText(),
-                             nu::RectF(nu::SizeF([self frame].size)),
-                             label->GetTextDrawOptions());
+                             nu::RectF(nu::SizeF([self frame].size)));
 }
 
 - (nu::NUPrivate*)nuPrivate {
@@ -60,9 +59,6 @@ NativeView Label::PlatformCreate() {
 }
 
 void Label::PlatformSetAttributedText(AttributedText* text) {
-}
-
-void Label::PlatformUpdateTextDrawOptions() {
 }
 
 }  // namespace nu

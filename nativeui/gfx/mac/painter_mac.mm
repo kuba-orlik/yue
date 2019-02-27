@@ -218,28 +218,28 @@ void PainterMac::DrawCanvasFromRect(Canvas* canvas, const RectF& src,
               hints:nil];
 }
 
-void PainterMac::DrawAttributedText(AttributedText* text, const RectF& rect,
-                                    const TextDrawOptions& options) {
+void PainterMac::DrawAttributedText(AttributedText* text, const RectF& rect) {
   // We still need the NSStringDrawingUsesLineFragmentOrigin flag even when
   // drawing single line, otherwise Cocoa would reserve space for an empty line.
+  const TextFormat& format = text->GetFormat();
   int draw_options = NSStringDrawingUsesLineFragmentOrigin;
-  if (options.ellipsis)
+  if (format.ellipsis)
     draw_options |= NSStringDrawingTruncatesLastVisibleLine;
 
   // Horizontal alignment.
   RectF bounds(rect);
-  RectF text_bounds = text->GetBoundsFor(rect.size(), options);
-  if (options.align == TextAlign::Center)
+  RectF text_bounds = text->GetBoundsFor(rect.size());
+  if (format.align == TextAlign::Center)
     bounds.Inset((rect.width() - text_bounds.width()) / 2.f, 0.f);
-  else if (options.align == TextAlign::End)
+  else if (format.align == TextAlign::End)
     bounds.Inset(rect.width() - text_bounds.width(), 0.f, 0.f, 0.f);
 
   // Vertical alignment.
-  if (options.valign == TextAlign::Start)
+  if (format.valign == TextAlign::Start)
     bounds.Inset(0.f, rect.height() - text_bounds.height(), 0.f, 0.f);
-  else if (options.valign == TextAlign::Center)
+  else if (format.valign == TextAlign::Center)
     bounds.Inset(0.f, (rect.height() - text_bounds.height()) / 2.f);
-  else if (options.valign == TextAlign::End)
+  else if (format.valign == TextAlign::End)
     bounds.set_height(text_bounds.height());
 
   GraphicsContextScope scoped(target_context_);

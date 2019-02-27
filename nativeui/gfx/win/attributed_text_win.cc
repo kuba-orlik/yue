@@ -55,7 +55,9 @@ inline DWRITE_FONT_WEIGHT ToDWriteType(Font::Weight weight) {
 
 }  // namespace
 
-AttributedText::AttributedText(const std::string& text) {
+AttributedText::AttributedText(const std::string& text,
+                               const TextFormat& format)
+    : format_(format) {
   original_text_ = base::UTF8ToUTF16(text);
   CHECK(CreateTextLayout(original_text_, &text_));
 }
@@ -76,8 +78,7 @@ void AttributedText::PlatformSetColorFor(Color color, int start, int end) {
   // TODO(zcbenz): Needs to implement Direct2D support first.
 }
 
-RectF AttributedText::GetBoundsFor(const SizeF& size,
-                                   const TextDrawOptions& options) {
+RectF AttributedText::GetBoundsFor(const SizeF& size) const {
   text_->SetMaxWidth(size.width());
   text_->SetMaxHeight(size.height());
   DWRITE_TEXT_METRICS metrics = {0};

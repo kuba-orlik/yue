@@ -28,9 +28,6 @@ class NATIVEUI_EXPORT Label : public View {
   void SetAttributedText(AttributedText* text);
   AttributedText* GetAttributedText() const { return text_.get(); }
 
-  void SetTextDrawOptions(const TextDrawOptions& options);
-  const TextDrawOptions& GetTextDrawOptions() const { return options_; }
-
   // View:
   const char* GetClassName() const override;
   void SetFont(Font* font) override;
@@ -46,7 +43,6 @@ class NATIVEUI_EXPORT Label : public View {
 
   NativeView PlatformCreate();
   void PlatformSetAttributedText(AttributedText* text);
-  void PlatformUpdateTextDrawOptions();
 
   // False if user has passed an AttributedText.
   bool is_simple_text_ = false;
@@ -55,7 +51,6 @@ class NATIVEUI_EXPORT Label : public View {
   Color color_;
   scoped_refptr<Font> font_;
 
-  TextDrawOptions options_ = {TextAlign::Center, TextAlign::Center, true};
   scoped_refptr<AttributedText> text_;
 };
 

@@ -9,6 +9,7 @@
 
 #include "base/memory/ref_counted.h"
 #include "nativeui/gfx/color.h"
+#include "nativeui/gfx/text.h"
 #include "nativeui/types.h"
 
 namespace nu {
@@ -16,20 +17,20 @@ namespace nu {
 class Font;
 class RectF;
 class SizeF;
-struct TextDrawOptions;
 
 class NATIVEUI_EXPORT AttributedText : public base::RefCounted<AttributedText> {
  public:
-  explicit AttributedText(const std::string& text);
+  AttributedText(const std::string& text, const TextFormat& format);
 
   void SetFont(Font* font);
   void SetFontFor(Font* font, int start, int end);
   void SetColor(Color font);
   void SetColorFor(Color font, int start, int end);
 
-  RectF GetBoundsFor(const SizeF& size, const TextDrawOptions& options);
+  RectF GetBoundsFor(const SizeF& size) const;
   std::string GetText() const;
 
+  const TextFormat& GetFormat() const { return format_; }
   NativeAttributedText GetNative() const { return text_; }
 
  protected:
@@ -42,6 +43,7 @@ class NATIVEUI_EXPORT AttributedText : public base::RefCounted<AttributedText> {
   void PlatformSetColorFor(Color color, int start, int end);
 
   NativeAttributedText text_;
+  TextFormat format_;
 
 #if defined(OS_WIN)
   // IDWriteTextLayout does not provide a way to get text.

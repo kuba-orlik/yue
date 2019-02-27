@@ -244,7 +244,9 @@ struct Type<nu::AttributedText> {
   static void BuildConstructor(v8::Local<v8::Context> context,
                                v8::Local<v8::Object> constructor) {
     Set(context, constructor,
-        "create", &CreateOnHeap<nu::AttributedText, const std::string&>);
+        "create", &CreateOnHeap<nu::AttributedText,
+                                const std::string&,
+                                const nu::TextFormat&>);
   }
   static void BuildPrototype(v8::Local<v8::Context> context,
                              v8::Local<v8::ObjectTemplate> templ) {
@@ -254,6 +256,7 @@ struct Type<nu::AttributedText> {
         "setColor", &nu::AttributedText::SetColor,
         "setColorFor", &nu::AttributedText::SetColorFor,
         "getBoundsFor", &nu::AttributedText::GetBoundsFor,
+        "getFormat", &nu::AttributedText::GetFormat,
         "getText", &nu::AttributedText::GetText);
   }
 };
@@ -741,11 +744,11 @@ struct Type<nu::TextAlign> {
 };
 
 template<>
-struct Type<nu::TextDrawOptions> {
-  static constexpr const char* name = "yue.TextDrawOptions";
+struct Type<nu::TextFormat> {
+  static constexpr const char* name = "yue.TextFormat";
   static bool FromV8(v8::Local<v8::Context> context,
                      v8::Local<v8::Value> value,
-                     nu::TextDrawOptions* out) {
+                     nu::TextFormat* out) {
     if (!value->IsObject())
       return false;
     v8::Local<v8::Object> obj = value.As<v8::Object>();
@@ -756,7 +759,7 @@ struct Type<nu::TextDrawOptions> {
     return true;
   }
   static v8::Local<v8::Value> ToV8(v8::Local<v8::Context> context,
-                                   const nu::TextDrawOptions& options) {
+                                   const nu::TextFormat& options) {
     v8::Local<v8::Object> obj = v8::Object::New(context->GetIsolate());
     Set(context, obj, "align", options.align);
     Set(context, obj, "valign", options.valign);
@@ -772,7 +775,7 @@ struct Type<nu::TextAttributes> {
   static bool FromV8(v8::Local<v8::Context> context,
                      v8::Local<v8::Value> value,
                      nu::TextAttributes* out) {
-    if (!Type<nu::TextDrawOptions>::FromV8(context, value, out))
+    if (!Type<nu::TextFormat>::FromV8(context, value, out))
       return false;
     v8::Local<v8::Object> obj = value.As<v8::Object>();
     nu::Font* font;
@@ -1945,9 +1948,7 @@ struct Type<nu::Label> {
         "setText", &nu::Label::SetText,
         "getText", &nu::Label::GetText,
         "setAttributedText", &nu::Label::SetAttributedText,
-        "getAttributedText", &nu::Label::GetAttributedText,
-        "setTextDrawOptions", &nu::Label::SetTextDrawOptions,
-        "getTextDrawOptions", &nu::Label::GetTextDrawOptions);
+        "getAttributedText", &nu::Label::GetAttributedText);
   }
 };
 
