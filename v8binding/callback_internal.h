@@ -261,11 +261,13 @@ struct V8FunctionInvoker<v8::Local<v8::Value>(ArgTypes...)> {
     }
     auto context = func->CreationContext();
     std::vector<v8::Local<v8::Value>> args = { ToV8(context, raw)... };
-    return handle_scope.Escape(node::MakeCallback(
-          isolate, func, func,
-          static_cast<int>(args.size()),
-          args.empty() ? nullptr: &args.front(),
-          {0, 0}).ToLocalChecked());
+    v8::MaybeLocal<v8::Value> val = node::MakeCallback(
+        isolate, func, func,
+        static_cast<int>(args.size()),
+        args.empty() ? nullptr: &args.front(),
+        {0, 0});
+    return handle_scope.Escape(val.IsEmpty() ? v8::Null(isolate)
+                                             : val.ToLocalChecked());
   }
 };
 
@@ -314,7 +316,8 @@ struct V8FunctionInvoker<ReturnType(ArgTypes...)> {
         static_cast<int>(args.size()),
         args.empty() ? nullptr : &args.front(),
         {0, 0});
-    FromV8(context, val.ToLocalChecked(), &ret);
+    if (!val.IsEmpty())
+      FromV8(context, val.ToLocalChecked(), &ret);
     return ret;
   }
 };
