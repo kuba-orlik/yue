@@ -22,8 +22,6 @@ class PainterWin : public Painter {
  public:
   // Paint on the HDC.
   PainterWin(HDC hdc, const Size& size, float scale_factor);
-  // Paint on the bitmap.
-  PainterWin(NativeBitmap bitmap, float scale_factor);
   // PainterWin should be created on stack for best performance.
   ~PainterWin() override;
 
