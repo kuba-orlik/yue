@@ -10,6 +10,7 @@
 #include "nativeui/gfx/geometry/size_f.h"
 #include "nativeui/gfx/text.h"
 #include "nativeui/gfx/win/direct_write.h"
+#include "nativeui/gfx/win/drawing_effect.h"
 
 namespace nu {
 
@@ -74,7 +75,10 @@ void AttributedText::PlatformSetFontFor(Font* font, int start, int end) {
 }
 
 void AttributedText::PlatformSetColorFor(Color color, int start, int end) {
-  // TODO(zcbenz): Needs to implement Direct2D support first.
+  DWRITE_TEXT_RANGE range = {start, IndexToLength(original_text_, start, end)};
+  scoped_refptr<DrawingEffect> drawing_effect(new DrawingEffect);
+  drawing_effect->fg_color = color;
+  text_->SetDrawingEffect(drawing_effect.get(), range);
 }
 
 RectF AttributedText::GetBoundsFor(const SizeF& size) const {

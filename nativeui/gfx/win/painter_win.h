@@ -16,6 +16,8 @@
 
 namespace nu {
 
+class DWriteTextRenderer;
+
 class PainterWin : public Painter {
  public:
   // Paint on the HDC.
@@ -131,12 +133,6 @@ class PainterWin : public Painter {
   std::stack<PainterState> states_;
 
   Gdiplus::Graphics graphics_;
-
-  // The D2D1 render target, created on request.
-  Microsoft::WRL::ComPtr<ID2D1DCRenderTarget> d2d1_target_;
-
-  // Cached brush for default text.
-  Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> text_brush_;
 
   // Current path.
   Gdiplus::GraphicsPath path_;

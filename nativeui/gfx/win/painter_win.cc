@@ -20,9 +20,8 @@
 #include "nativeui/gfx/geometry/vector2d_conversions.h"
 #include "nativeui/gfx/image.h"
 #include "nativeui/gfx/win/direct_write.h"
-#include "nativeui/gfx/win/screen_win.h"
+#include "nativeui/gfx/win/dwrite_text_renderer.h"
 #include "nativeui/state.h"
-#include "nativeui/system.h"
 
 namespace nu {
 
@@ -211,49 +210,27 @@ void PainterWin::DrawCanvasFromRect(Canvas* canvas, const RectF& src,
 }
 
 void PainterWin::DrawAttributedText(AttributedText* text, const RectF& rect) {
-  // Create and setup target.
-  float dpi = GetDPIFromScalingFactor(scale_factor_);
-  if (!d2d1_target_) {
-    ID2D1Factory* d2d1_factory = State::GetCurrent()->GetD2D1Factory();
-    D2D1_RENDER_TARGET_PROPERTIES properties = {
-      D2D1_RENDER_TARGET_TYPE_DEFAULT,
-      {DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED},
-      dpi, dpi,
-      D2D1_RENDER_TARGET_USAGE_NONE,
-      D2D1_FEATURE_LEVEL_DEFAULT,
-    };
-    if (FAILED(d2d1_factory->CreateDCRenderTarget(&properties,
-                                                  d2d1_target_.GetAddressOf())))
-      LOG(ERROR) << "Failed to create D2D1 render target.";
-    else
-      d2d1_target_->SetDpi(dpi, dpi);
-  }
-
-  // Use system text color as fallback color.
-  if (!text_brush_)
-    d2d1_target_->CreateSolidColorBrush(
-        System::GetColor(System::Color::Text).ToD2D1Color(),
-        text_brush_.GetAddressOf());
+  auto* target = State::GetCurrent()->GetDCRenderTarget(scale_factor_);
+  auto* renderer = State::GetCurrent()->GetDwriteTextRenderer(scale_factor_);
 
   // Aquire HDC and bind it, no GDI+ operations from now on.
   // Note that the HDC is untouched, we directly use GDI+'s transform for D2D1
   // so we can get best performance and effect.
   HDC hdc = graphics_.GetHDC();
   RECT rc = nu::Rect(size_).ToRECT();
-  d2d1_target_->BindDC(hdc, &rc);
-  d2d1_target_->SetTransform(top().matrix);
+  target->BindDC(hdc, &rc);
+  target->SetTransform(top().matrix);
+
+  target->BeginDraw();
 
   IDWriteTextLayout* text_layout = text->GetNative();
   text_layout->SetMaxWidth(rect.width());
   text_layout->SetMaxHeight(rect.height());
+  text_layout->Draw(nullptr, renderer, rect.x(), rect.y());
 
-  d2d1_target_->BeginDraw();
-  d2d1_target_->DrawTextLayout({rect.x(), rect.y()}, text_layout,
-                               text_brush_.Get(), D2D1_DRAW_TEXT_OPTIONS_CLIP);
   D2D1_TAG tag1, tag2;
-  d2d1_target_->EndDraw(&tag1, &tag2);
+  target->EndDraw(&tag1, &tag2);
 
-  // Done.
   graphics_.ReleaseHDC(hdc);
 }
 

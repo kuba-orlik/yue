@@ -6,7 +6,6 @@
 #include "nativeui/gfx/win/direct_write.h"
 
 #include <d2d1.h>
-#include <shlwapi.h>
 #include <wrl/client.h>
 
 #include "base/debug/alias.h"
