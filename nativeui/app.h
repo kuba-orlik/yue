@@ -5,12 +5,10 @@
 #ifndef NATIVEUI_APP_H_
 #define NATIVEUI_APP_H_
 
-#include <array>
-#include <memory>
 #include <string>
 
 #include "base/memory/weak_ptr.h"
-#include "nativeui/clipboard.h"
+#include "nativeui/nativeui_export.h"
 
 namespace nu {
 
@@ -20,9 +18,6 @@ class MenuBar;
 class NATIVEUI_EXPORT App {
  public:
   static App* GetCurrent();
-
-  // Return clipboard instance.
-  Clipboard* GetClipboard(Clipboard::Type type = Clipboard::Type::CopyPaste);
 
 #if defined(OS_MACOSX)
   // Set the application menu.
@@ -42,10 +37,6 @@ class NATIVEUI_EXPORT App {
 
  private:
   friend class State;
-
-  // Array of available clipboards.
-  std::array<std::unique_ptr<Clipboard>,
-             static_cast<size_t>(Clipboard::Type::Count)> clipboards_;
 
 #if defined(OS_MACOSX)
   scoped_refptr<MenuBar> application_menu_;

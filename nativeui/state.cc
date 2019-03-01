@@ -66,4 +66,11 @@ Font* State::GetDefaultFont() {
   return default_font_.get();
 }
 
+Clipboard* State::GetClipboard(Clipboard::Type type) {
+  int index = static_cast<int>(type);
+  if (!clipboards_[index])
+    clipboards_[index].reset(new Clipboard(type));
+  return clipboards_[index].get();
+}
+
 }  // namespace nu

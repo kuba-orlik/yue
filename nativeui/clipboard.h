@@ -31,6 +31,9 @@ class NATIVEUI_EXPORT Clipboard {
     Count,
   };
 
+  // Return clipboard instance.
+  static Clipboard* Get(Type type = Type::CopyPaste);
+
   // Abstraction of data in clipboard.
   class NATIVEUI_EXPORT Data {
    public:
@@ -110,7 +113,7 @@ class NATIVEUI_EXPORT Clipboard {
   base::WeakPtr<Clipboard> GetWeakPtr() { return weak_factory_.GetWeakPtr(); }
 
  private:
-  friend class App;
+  friend class State;
 
   explicit Clipboard(Type type);
 

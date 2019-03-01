@@ -225,14 +225,13 @@ struct Type<nu::App> {
   }
   static void BuildPrototype(v8::Local<v8::Context> context,
                              v8::Local<v8::ObjectTemplate> templ) {
-    Set(context, templ,
 #if defined(OS_MACOSX)
+    Set(context, templ,
         "setApplicationMenu",
         RefMethod(&nu::App::SetApplicationMenu, RefType::Reset, "appMenu"),
         "setDockBadgeLabel", &nu::App::SetDockBadgeLabel,
-        "getDockBadgeLabel", &nu::App::GetDockBadgeLabel,
+        "getDockBadgeLabel", &nu::App::GetDockBadgeLabel);
 #endif
-        "getClipboard", &nu::App::GetClipboard);
   }
 };
 
@@ -543,6 +542,7 @@ struct Type<nu::Clipboard> {
   static constexpr const char* name = "yue.Clipboard";
   static void BuildConstructor(v8::Local<v8::Context> context,
                                v8::Local<v8::Object> constructor) {
+    Set(context, constructor, "get", &nu::Clipboard::Get);
   }
   static void BuildPrototype(v8::Local<v8::Context> context,
                              v8::Local<v8::ObjectTemplate> templ) {

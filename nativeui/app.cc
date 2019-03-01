@@ -18,11 +18,4 @@ App::App() : weak_factory_(this) {}
 
 App::~App() {}
 
-Clipboard* App::GetClipboard(Clipboard::Type type) {
-  int index = static_cast<int>(type);
-  if (!clipboards_[index])
-    clipboards_[index].reset(new Clipboard(type));
-  return clipboards_[index].get();
-}
-
 }  // namespace nu

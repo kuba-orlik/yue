@@ -203,14 +203,13 @@ template<>
 struct Type<nu::App> {
   static constexpr const char* name = "yue.App";
   static void BuildMetaTable(State* state, int metatable) {
-    RawSet(state, metatable,
 #if defined(OS_MACOSX)
+    RawSet(state, metatable,
            "setapplicationmenu",
            RefMethod(&nu::App::SetApplicationMenu, RefType::Reset, "appmenu"),
            "setdockbadgelabel", &nu::App::SetDockBadgeLabel,
-           "getdockbadgelabel", &nu::App::GetDockBadgeLabel,
+           "getdockbadgelabel", &nu::App::GetDockBadgeLabel);
 #endif
-           "getclipboard", &nu::App::GetClipboard);
   }
 };
 
@@ -498,6 +497,7 @@ struct Type<nu::Clipboard> {
   static constexpr const char* name = "yue.Clipboard";
   static void BuildMetaTable(State* state, int index) {
     RawSet(state, index,
+           "get", &nu::Clipboard::Get,
            "clear", &nu::Clipboard::Clear,
            "settext", &nu::Clipboard::SetText,
            "gettext", &nu::Clipboard::GetText,

@@ -5,11 +5,13 @@
 #ifndef NATIVEUI_STATE_H_
 #define NATIVEUI_STATE_H_
 
+#include <array>
 #include <map>
 #include <memory>
 
 #include "base/memory/ref_counted.h"
 #include "nativeui/app.h"
+#include "nativeui/clipboard.h"
 
 #if defined(OS_WIN)
 #include <wrl/client.h>
@@ -56,6 +58,9 @@ class NATIVEUI_EXPORT State {
   // Return the default GUI font.
   Font* GetDefaultFont();
 
+  // Return clipboard instance.
+  Clipboard* GetClipboard(Clipboard::Type type = Clipboard::Type::CopyPaste);
+
   // Internal classes.
 #if defined(OS_WIN)
   void InitializeCOM();
@@ -101,6 +106,10 @@ class NATIVEUI_EXPORT State {
 
   // The default font.
   scoped_refptr<Font> default_font_;
+
+  // Array of available clipboards.
+  std::array<std::unique_ptr<Clipboard>,
+             static_cast<size_t>(Clipboard::Type::Count)> clipboards_;
 
   YGConfigRef yoga_config_;
 
