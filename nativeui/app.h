@@ -11,24 +11,15 @@
 
 #include "base/memory/weak_ptr.h"
 #include "nativeui/clipboard.h"
-#include "nativeui/system.h"
 
 namespace nu {
 
-class Font;
 class MenuBar;
 
 // App wide APIs, this class is managed by State.
 class NATIVEUI_EXPORT App {
  public:
   static App* GetCurrent();
-
-  // Deprecated.
-  using ThemeColor = System::Color;
-  Color GetColor(ThemeColor name) { return System::GetColor(name); }
-
-  // Return the default GUI font.
-  Font* GetDefaultFont();
 
   // Return clipboard instance.
   Clipboard* GetClipboard(Clipboard::Type type = Clipboard::Type::CopyPaste);
@@ -51,8 +42,6 @@ class NATIVEUI_EXPORT App {
 
  private:
   friend class State;
-
-  scoped_refptr<Font> default_font_;
 
   // Array of available clipboards.
   std::array<std::unique_ptr<Clipboard>,

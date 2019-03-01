@@ -14,6 +14,8 @@ class FilePath;
 
 namespace nu {
 
+class Font;
+
 class NATIVEUI_EXPORT System {
  public:
   enum class Color {
@@ -31,6 +33,8 @@ class NATIVEUI_EXPORT System {
   };
 
   static base::FilePath GetPath(Path name);
+
+  static Font* GetDefaultFont();
 
  private:
   DISALLOW_IMPLICIT_CONSTRUCTORS(System);

@@ -210,8 +210,6 @@ struct Type<nu::App> {
            "setdockbadgelabel", &nu::App::SetDockBadgeLabel,
            "getdockbadgelabel", &nu::App::GetDockBadgeLabel,
 #endif
-           "getcolor", &nu::App::GetColor,
-           "getdefaultfont", &nu::App::GetDefaultFont,
            "getclipboard", &nu::App::GetClipboard);
   }
 };
@@ -349,7 +347,7 @@ struct Type<nu::Font> {
            "getstyle", &nu::Font::GetStyle);
   }
   static nu::Font* GetDefault() {
-    return nu::App::GetCurrent()->GetDefaultFont();
+    return nu::System::GetDefaultFont();
   }
 };
 
@@ -1868,7 +1866,8 @@ struct Type<nu::System> {
   static void BuildMetaTable(State* state, int index) {
     RawSet(state, index,
            "getcolor", &nu::System::GetColor,
-           "getpath", &nu::System::GetPath);
+           "getpath", &nu::System::GetPath,
+           "getdefaultfont", &nu::System::GetDefaultFont);
   }
 };
 

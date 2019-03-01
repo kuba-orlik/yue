@@ -11,3 +11,6 @@ class_methods:
 
   - signature: base::FilePath GetPath(System::Path name)
     description: Return predefined filesystem path with `name`.
+
+  - signature: Font* GetDefaultFont()
+    description: Return the default font for displaying text.

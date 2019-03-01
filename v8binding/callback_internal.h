@@ -266,8 +266,10 @@ struct V8FunctionInvoker<v8::Local<v8::Value>(ArgTypes...)> {
         static_cast<int>(args.size()),
         args.empty() ? nullptr: &args.front(),
         {0, 0});
-    return handle_scope.Escape(val.IsEmpty() ? v8::Null(isolate)
-                                             : val.ToLocalChecked());
+    if (val.IsEmpty())
+      return handle_scope.Escape(v8::Null(isolate));
+    else
+      return handle_scope.Escape(val.ToLocalChecked());
   }
 };
 

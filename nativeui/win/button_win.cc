@@ -18,6 +18,7 @@
 #include "nativeui/gfx/win/screen_win.h"
 #include "nativeui/gfx/win/text_win.h"
 #include "nativeui/state.h"
+#include "nativeui/system.h"
 #include "nativeui/win/clickable.h"
 
 namespace nu {

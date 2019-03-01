@@ -24,7 +24,7 @@ lang_detail:
 
     ```lua
     local gui = require('yue.gui')
-    gui.app:getcolor('text')
+    gui.app:setapplicationmenu(menu)
     ```
 
   js: |
@@ -33,7 +33,7 @@ lang_detail:
 
     ```js
     const gui = require('gui')
-    gui.app.getColor('text')
+    gui.app.setApplicationMenu(menu)
     ```
 
 class_methods:
@@ -57,9 +57,6 @@ methods:
   - signature: std::string GetDockBadgeLabel() const
     platform: ['macOS']
     description: Get the label displayed in dock’s badging area.
-
-  - signature: Font* GetDefaultFont()
-    description: Return the default font for displaying text.
 
   - signature: Clipboard* GetClipboard(Clipboard::Type type)
     description: Return the clipboard with `type`.

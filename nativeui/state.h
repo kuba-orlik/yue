@@ -41,6 +41,8 @@ class ScopedOleInitializer;
 class TrayHost;
 #endif
 
+class Font;
+
 class NATIVEUI_EXPORT State {
  public:
   State();
@@ -50,6 +52,9 @@ class NATIVEUI_EXPORT State {
 
   // Return the instance of App.
   App* GetApp() { return &app_; }
+
+  // Return the default GUI font.
+  Font* GetDefaultFont();
 
   // Internal classes.
 #if defined(OS_WIN)
@@ -93,6 +98,9 @@ class NATIVEUI_EXPORT State {
 
   // The app instance.
   App app_;
+
+  // The default font.
+  scoped_refptr<Font> default_font_;
 
   YGConfigRef yoga_config_;
 

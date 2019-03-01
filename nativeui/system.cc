@@ -8,6 +8,7 @@
 
 #include "base/files/file_path.h"
 #include "base/path_service.h"
+#include "nativeui/state.h"
 
 #if defined(OS_LINUX)
 #include "base/environment.h"
@@ -50,6 +51,10 @@ base::FilePath System::GetPath(Path name) {
       return ret;
   }
   return ret;
+}
+
+Font* System::GetDefaultFont() {
+  return State::GetCurrent()->GetDefaultFont();
 }
 
 }  // namespace nu

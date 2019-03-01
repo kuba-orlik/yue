@@ -232,8 +232,6 @@ struct Type<nu::App> {
         "setDockBadgeLabel", &nu::App::SetDockBadgeLabel,
         "getDockBadgeLabel", &nu::App::GetDockBadgeLabel,
 #endif
-        "getColor", &nu::App::GetColor,
-        "getDefaultFont", &nu::App::GetDefaultFont,
         "getClipboard", &nu::App::GetClipboard);
   }
 };
@@ -380,7 +378,7 @@ struct Type<nu::Font> {
         "getStyle", &nu::Font::GetStyle);
   }
   static nu::Font* GetDefault() {
-    return nu::App::GetCurrent()->GetDefaultFont();
+    return nu::System::GetDefaultFont();
   }
 };
 
@@ -2161,7 +2159,8 @@ struct Type<nu::System> {
                                v8::Local<v8::Object> constructor) {
     Set(context, constructor,
         "getColor", &nu::System::GetColor,
-        "getPath", &nu::System::GetPath);
+        "getPath", &nu::System::GetPath,
+        "getDefaultFont", &nu::System::GetDefaultFont);
   }
   static void BuildPrototype(v8::Local<v8::Context> context,
                              v8::Local<v8::ObjectTemplate> templ) {

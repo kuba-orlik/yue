@@ -12,6 +12,7 @@
 #include "nativeui/gfx/font.h"
 #include "nativeui/gfx/text.h"
 #include "nativeui/state.h"
+#include "nativeui/system.h"
 
 namespace nu {
 
@@ -61,7 +62,7 @@ bool CreateTextLayout(const base::string16& text,
                       IDWriteTextLayout** text_layout) {
   IDWriteFactory* factory = State::GetCurrent()->GetDWriteFactory();
 
-  scoped_refptr<Font> default_font = App::GetCurrent()->GetDefaultFont();
+  Font* default_font = System::GetDefaultFont();
   Microsoft::WRL::ComPtr<IDWriteTextFormat> dformat;
   if (FAILED(factory->CreateTextFormat(default_font->GetName16().c_str(),
                                        nullptr,

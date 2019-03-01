@@ -4,9 +4,9 @@
 
 #include "nativeui/label.h"
 
-#include "nativeui/app.h"
 #include "nativeui/gfx/attributed_text.h"
 #include "nativeui/gfx/font.h"
+#include "nativeui/system.h"
 #include "third_party/yoga/yoga/Yoga.h"
 
 namespace nu {
@@ -33,7 +33,7 @@ Label::Label() {
   YGNodeSetMeasureFunc(node(), MeasureLabel);
 
   // Default color and font.
-  font_ = App::GetCurrent()->GetDefaultFont();
+  font_ = System::GetDefaultFont();
   color_ = System::GetColor(System::Color::Text);
 }
 
