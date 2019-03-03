@@ -252,6 +252,7 @@ struct Type<nu::AttributedText> {
         "setFontFor", &nu::AttributedText::SetFontFor,
         "setColor", &nu::AttributedText::SetColor,
         "setColorFor", &nu::AttributedText::SetColorFor,
+        "getSize", &nu::AttributedText::GetSize,
         "getBoundsFor", &nu::AttributedText::GetBoundsFor,
         "getFormat", &nu::AttributedText::GetFormat,
         "getText", &nu::AttributedText::GetText);
@@ -781,17 +782,6 @@ struct Type<nu::TextAttributes> {
       out->font = font;
     Get(context, obj, "color", &out->color);
     return true;
-  }
-};
-
-template<>
-struct Type<nu::TextMetrics> {
-  static constexpr const char* name = "yue.TextMetrics";
-  static v8::Local<v8::Value> ToV8(v8::Local<v8::Context> context,
-                                   const nu::TextMetrics& metrics) {
-    v8::Local<v8::Object> obj = v8::Object::New(context->GetIsolate());
-    Set(context, obj, "size", metrics.size);
-    return obj;
   }
 };
 

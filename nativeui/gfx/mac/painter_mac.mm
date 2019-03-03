@@ -13,7 +13,6 @@
 #include "nativeui/gfx/canvas.h"
 #include "nativeui/gfx/font.h"
 #include "nativeui/gfx/image.h"
-#include "nativeui/gfx/mac/text_mac.h"
 
 namespace nu {
 

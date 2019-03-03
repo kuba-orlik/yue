@@ -225,6 +225,7 @@ struct Type<nu::AttributedText> {
            "setfontfor", &nu::AttributedText::SetFontFor,
            "setcolor", &nu::AttributedText::SetColor,
            "setcolorfor", &nu::AttributedText::SetColorFor,
+           "getsize", &nu::AttributedText::GetSize,
            "getboundsfor", &nu::AttributedText::GetBoundsFor,
            "getformat", &nu::AttributedText::GetFormat,
            "gettext", &nu::AttributedText::GetText);
@@ -703,15 +704,6 @@ struct Type<nu::TextAttributes> {
       out->font = font;
     RawGetAndPop(state, index, "color", &out->color);
     return true;
-  }
-};
-
-template<>
-struct Type<nu::TextMetrics> {
-  static constexpr const char* name = "yue.TextMetrics";
-  static inline void Push(State* state, const nu::TextMetrics& metrics) {
-    NewTable(state, 0, 1);
-    RawSet(state, -1, "size", metrics.size);
   }
 };
 

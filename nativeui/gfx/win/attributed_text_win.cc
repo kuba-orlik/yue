@@ -86,6 +86,10 @@ void AttributedText::PlatformSetColorFor(Color color, int start, int end) {
   text_->SetDrawingEffect(drawing_effect.get(), range);
 }
 
+SizeF AttributedText::GetSize() const {
+  return GetBoundsFor(SizeF(FLT_MAX, 0)).size();
+}
+
 RectF AttributedText::GetBoundsFor(const SizeF& size) const {
   text_->SetMaxWidth(size.width());
   text_->SetMaxHeight(size.height());
