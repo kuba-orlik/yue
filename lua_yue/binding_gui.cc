@@ -747,7 +747,6 @@ struct Type<nu::Painter> {
            "drawcanvas", &nu::Painter::DrawCanvas,
            "drawcanvasfromrect", &nu::Painter::DrawCanvasFromRect,
            "drawattributedtext", &nu::Painter::DrawAttributedText,
-           "measuretext", &nu::Painter::MeasureText,
            "drawtext", &nu::Painter::DrawText);
   }
 };

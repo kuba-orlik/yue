@@ -248,9 +248,4 @@ void PainterMac::DrawAttributedText(AttributedText* text, const RectF& rect) {
                           context:nil];
 }
 
-TextMetrics PainterMac::MeasureText(const std::string& text, float width,
-                                    const TextAttributes& attributes) {
-  return nu::MeasureText(text, width, attributes);
-}
-
 }  // namespace nu

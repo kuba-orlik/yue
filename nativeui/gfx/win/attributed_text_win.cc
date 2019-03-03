@@ -58,7 +58,12 @@ inline DWRITE_FONT_WEIGHT ToDWriteType(Font::Weight weight) {
 
 AttributedText::AttributedText(const std::string& text,
                                const TextFormat& format)
-    : format_(format), original_text_(base::UTF8ToUTF16(text)) {
+    : AttributedText(base::UTF8ToUTF16(text), format) {
+}
+
+AttributedText::AttributedText(const std::wstring& text,
+                               const TextFormat& format)
+    : format_(format), original_text_(text) {
   CHECK(CreateTextLayout(original_text_, format, &text_));
 }
 
