@@ -93,15 +93,6 @@ WindowImpl::WindowImpl(const Window::Options& options, Window* delegate)
     // Change default background color to transparent.
     background_color_ = Color(0, 0, 0, 0);
   }
-
-  // Create drawing target.
-  auto* factory = State::GetCurrent()->GetD2D1Factory();
-  auto properties = D2D1::RenderTargetProperties();
-  properties.dpiX = properties.dpiY = GetDPIFromScalingFactor(scale_factor_);
-  factory->CreateHwndRenderTarget(
-      properties,
-      D2D1::HwndRenderTargetProperties(hwnd(), D2D1::SizeU(1, 1)),
-      target_.GetAddressOf());
 }
 
 WindowImpl::~WindowImpl() {
@@ -335,7 +326,8 @@ LRESULT WindowImpl::OnNotify(int id, LPNMHDR pnmh) {
 
 void WindowImpl::OnSize(UINT param, const Size& size) {
   // Notify Direct2D that window has resized.
-  target_->Resize(size.ToD2D1());
+  if (target_)
+    target_->Resize(size.ToD2D1());
 
   if (!delegate_->GetContentView())
     return;
@@ -442,51 +434,49 @@ void WindowImpl::OnChar(UINT ch, UINT repeat, UINT flags) {
 }
 
 void WindowImpl::OnPaint(HDC) {
-  PAINTSTRUCT ps;
-  BeginPaint(hwnd(), &ps);
-
-  // Always update the whole buffer for transparent window.
-  Rect bounds(GetContentPixelBounds());
-  Rect dirty;
-  if (delegate_->IsTransparent())
-    dirty = Rect(bounds.size());
-  else
-    dirty = Rect(ps.rcPaint);
-
-  // Window may be resized to no content.
-  if (dirty.IsEmpty())
-    return;
-
   base::win::ScopedGetDC dc(hwnd());
-  {
+
+  // We don't really draw on transparent window, instead we draw on a buffer
+  // and then update window.
+  if (delegate_->IsTransparent()) {
     // Double buffering the drawing.
-    // DoubleBuffer buffer(dc, bounds.size(), dirty, dirty.origin());
+    Rect bounds(GetContentPixelBounds().size());
+    DoubleBuffer buffer(dc, bounds.size());
 
-    // Draw.
     {
-      // Background.
-      PainterWin painter(target_.Get(), dc);
-      painter.SetColor(background_color_);
-      painter.FillRect(ScaleRect(RectF(dirty), 1.f / scale_factor_));
-
-      // Controls.
-      delegate_->GetContentView()->GetNative()->Draw(&painter, dirty);
+      PainterWin painter(buffer.dc(), bounds.size(), scale_factor_);
+      DoDraw(&painter, bounds);
     }
 
     // Update layered window.
-    if (delegate_->IsTransparent()) {
-      RECT wr;
-      ::GetWindowRect(hwnd(), &wr);
-      SIZE size = {wr.right - wr.left, wr.bottom - wr.top};
-      POINT position = {wr.left, wr.top};
-      POINT zero = {0, 0};
-      BLENDFUNCTION blend = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
+    RECT wr;
+    ::GetWindowRect(hwnd(), &wr);
+    SIZE size = {wr.right - wr.left, wr.bottom - wr.top};
+    POINT position = {wr.left, wr.top};
+    POINT zero = {0, 0};
+    BLENDFUNCTION blend = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
 
-      // buffer.SetNoCopy();
-      // ::UpdateLayeredWindow(hwnd(), NULL, &position, &size, buffer.dc(),
-      //                       &zero, 0, &blend, ULW_ALPHA);
-    }
+    ::UpdateLayeredWindow(hwnd(), NULL, &position, &size, buffer.dc(),
+                          &zero, 0, &blend, ULW_ALPHA);
+    return;
   }
+
+  // Draw normal window.
+  PAINTSTRUCT ps;
+  BeginPaint(hwnd(), &ps);
+
+  // Window may be resized to no content.
+  Rect dirty(ps.rcPaint);
+  if (dirty.IsEmpty())
+    return;
+
+  if (!target_)
+    CreateD2D1RenderTarget();
+  PainterWin painter(target_.Get(), dc);
+  DoDraw(&painter, dirty);
+
+  if (painter.EndDraw())  // should we recreate target
+    target_.Reset();
 
   EndPaint(hwnd(), &ps);
 }
@@ -792,6 +782,26 @@ bool WindowImpl::GetClientAreaInsets(Insets* insets) {
 
   *insets = Insets();
   return true;
+}
+
+void WindowImpl::DoDraw(PainterWin* painter, const Rect& dirty) {
+  // Background.
+  painter->SetColor(background_color_);
+  painter->FillRect(ScaleRect(RectF(dirty), 1.f / scale_factor_));
+  // Controls.
+  delegate_->GetContentView()->GetNative()->Draw(painter, dirty);
+}
+
+void WindowImpl::CreateD2D1RenderTarget() {
+  // Create drawing target.
+  auto* factory = State::GetCurrent()->GetD2D1Factory();
+  auto properties = D2D1::RenderTargetProperties();
+  properties.dpiX = properties.dpiY = GetDPIFromScalingFactor(scale_factor_);
+  factory->CreateHwndRenderTarget(
+      properties,
+      D2D1::HwndRenderTargetProperties(hwnd(),
+                                       GetContentPixelBounds().size().ToD2D1()),
+      &target_);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

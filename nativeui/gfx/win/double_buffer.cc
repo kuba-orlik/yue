@@ -25,30 +25,17 @@ HBITMAP CreateBitmap(HDC dc, const Size& size) {
 }  // namespace
 
 DoubleBuffer::DoubleBuffer(HWND hwnd, const Size& size)
-    : DoubleBuffer(::GetDC(hwnd), size, Rect(), Point()) {
-  copy_on_destruction_ = false;
+    : DoubleBuffer(::GetDC(hwnd), size) {
   ::ReleaseDC(hwnd, dc_);
 }
 
 DoubleBuffer::DoubleBuffer(HDC dc, const Size& size)
-    : DoubleBuffer(dc, size, Rect(), Point()) {
-  copy_on_destruction_ = false;
-}
-
-DoubleBuffer::DoubleBuffer(HDC dc, const Size& size, const Rect& src,
-                           const Point& dest)
-    : dc_(dc), src_(src), dest_(dest),
+    : dc_(dc),
       mem_dc_(::CreateCompatibleDC(dc)),
       mem_bitmap_(CreateBitmap(dc, size)),
       select_bitmap_(mem_dc_.Get(), mem_bitmap_.get()) {}
 
-DoubleBuffer::~DoubleBuffer() {
-  if (copy_on_destruction_) {
-    // Transfer the off-screen DC to the screen.
-    BitBlt(dc_, src_.x(), src_.y(), src_.width(), src_.height(),
-           dc(), dest_.x(), dest_.y(), SRCCOPY);
-  }
-}
+DoubleBuffer::~DoubleBuffer() {}
 
 std::unique_ptr<Gdiplus::Bitmap> DoubleBuffer::GetGdiplusBitmap() const {
   // Code from Microsoft/VSSDK-Extensibility-Samples:

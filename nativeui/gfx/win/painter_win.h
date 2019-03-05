@@ -29,6 +29,9 @@ class PainterWin : public Painter {
   // PainterWin should be created on stack for best performance.
   ~PainterWin() override;
 
+  // Call EndDraw and return Whether we should recreate target.
+  bool EndDraw();
+
   // Draw a control.
   void DrawNativeTheme(NativeTheme::Part part,
                        ControlState state,

@@ -18,6 +18,7 @@
 namespace nu {
 
 class DataObject;
+class PainterWin;
 
 class WindowImpl : public Win32Window,
                    public DragSource::Delegate,
@@ -138,6 +139,10 @@ class WindowImpl : public Win32Window,
 
   void TrackMouse(bool enable);
   bool GetClientAreaInsets(Insets* insets);
+
+  // Drawing helpers.
+  void DoDraw(PainterWin* painter, const Rect& dirty);
+  void CreateD2D1RenderTarget();
 
   // The drawing target.
   Microsoft::WRL::ComPtr<ID2D1HwndRenderTarget> target_;

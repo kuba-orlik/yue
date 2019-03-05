@@ -95,11 +95,21 @@ PainterWin::PainterWin(HDC hdc, const Size& size, float scale_factor)
 }
 
 PainterWin::~PainterWin() {
+  EndDraw();
+}
+
+bool PainterWin::EndDraw() {
+  if (!target_)
+    return false;
+
   PopLayer();
-  target_->EndDraw();
+  bool recreate = target_->EndDraw() == D2DERR_RECREATE_TARGET;
 
   if (should_release_)
     target_->Release();
+
+  target_ = nullptr;
+  return recreate;
 }
 
 void PainterWin::DrawNativeTheme(NativeTheme::Part part,
@@ -447,8 +457,11 @@ void PainterWin::DrawAttributedText(AttributedText* text, const RectF& rect) {
 }
 
 void PainterWin::PopLayer() {
-  if (top().layer && top().layer_changed)
+  if (top().layer && top().layer_changed) {
     target_->PopLayer();
+    top().layer.Reset();
+    top().layer_changed = false;
+  }
 }
 
 }  // namespace nu

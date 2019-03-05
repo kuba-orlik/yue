@@ -19,10 +19,7 @@ class DoubleBuffer {
  public:
   DoubleBuffer(HWND hwnd, const Size& size);
   DoubleBuffer(HDC dc, const Size& size);
-  DoubleBuffer(HDC dc, const Size& size, const Rect& src, const Point& dest);
   ~DoubleBuffer();
-
-  void SetNoCopy() { copy_on_destruction_ = false; }
 
   // Return a GDI+ bitmap with alpha channel.
   //
@@ -36,13 +33,9 @@ class DoubleBuffer {
 
  private:
   HDC dc_;
-  Rect src_;
-  Point dest_;
   base::win::ScopedCreateDC mem_dc_;
   base::win::ScopedBitmap mem_bitmap_;
   base::win::ScopedSelectObject select_bitmap_;
-
-  bool copy_on_destruction_ = true;
 };
 
 }  // namespace nu
