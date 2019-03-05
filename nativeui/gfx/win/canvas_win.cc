@@ -28,8 +28,7 @@ void Canvas::PlatformDestroyBitmap(NativeBitmap bitmap) {
 Painter* Canvas::PlatformCreatePainter(NativeBitmap bitmap,
                                        const SizeF& size,
                                        float scale_factor) {
-  return new PainterWin(
-      bitmap->dc(), ToCeiledSize(ScaleSize(size, scale_factor)), scale_factor);
+  return new PainterWin(bitmap, scale_factor);
 }
 
 }  // namespace nu

@@ -4,6 +4,11 @@
 
 #include "nativeui/gfx/win/double_buffer.h"
 
+#include <wincodec.h>
+
+#include "nativeui/gfx/win/screen_win.h"
+#include "nativeui/state.h"
+
 namespace nu {
 
 namespace {
@@ -31,6 +36,7 @@ DoubleBuffer::DoubleBuffer(HWND hwnd, const Size& size)
 
 DoubleBuffer::DoubleBuffer(HDC dc, const Size& size)
     : dc_(dc),
+      size_(size),
       mem_dc_(::CreateCompatibleDC(dc)),
       mem_bitmap_(CreateBitmap(dc, size)),
       select_bitmap_(mem_dc_.Get(), mem_bitmap_.get()) {}
@@ -70,6 +76,20 @@ std::unique_ptr<Gdiplus::Bitmap> DoubleBuffer::GetGdiplusBitmap() const {
 
   return std::make_unique<Gdiplus::Bitmap>(
       width, height, pitch, PixelFormat32bppARGB, bits);
+}
+
+Microsoft::WRL::ComPtr<ID2D1Bitmap> DoubleBuffer::GetD2D1Bitmap(
+    ID2D1RenderTarget* target, float scale_factor) const {
+  IWICImagingFactory* wic_factory = State::GetCurrent()->GetWICFactory();
+  Microsoft::WRL::ComPtr<IWICBitmap> wic_bitmap;
+  wic_factory->CreateBitmapFromHBITMAP(
+      mem_bitmap_.get(), NULL, WICBitmapUsePremultipliedAlpha, &wic_bitmap);
+
+  D2D1_BITMAP_PROPERTIES properties = D2D1::BitmapProperties();
+  properties.dpiX = properties.dpiY = GetDPIFromScalingFactor(scale_factor);
+  Microsoft::WRL::ComPtr<ID2D1Bitmap> bitmap;
+  target->CreateBitmapFromWicBitmap(wic_bitmap.Get(), properties, &bitmap);
+  return std::move(bitmap);
 }
 
 }  // namespace nu

@@ -444,7 +444,7 @@ void WindowImpl::OnPaint(HDC) {
     DoubleBuffer buffer(dc, bounds.size());
 
     {
-      PainterWin painter(buffer.dc(), bounds.size(), scale_factor_);
+      PainterWin painter(&buffer, scale_factor_);
       DoDraw(&painter, bounds);
     }
 

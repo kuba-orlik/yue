@@ -23,8 +23,8 @@ class PainterWin : public Painter {
   // Paint on existing target.
   PainterWin(ID2D1RenderTarget* target, HDC hdc);
 
-  // Paint on the HDC.
-  PainterWin(HDC hdc, const Size& size, float scale_factor);
+  // Paint on offscreen buffer.
+  PainterWin(DoubleBuffer* buffer, float scale_factor);
 
   // PainterWin should be created on stack for best performance.
   ~PainterWin() override;
@@ -40,7 +40,7 @@ class PainterWin : public Painter {
                        const NativeTheme::ExtraParams& extra);
 
   // Draw the focus rect.
-  void DrawFocusRect(const nu::RectF& rect);
+  void DrawFocusRect(const RectF& rect);
 
   // Painter:
   void Save() override;
@@ -105,9 +105,6 @@ class PainterWin : public Painter {
   ID2D1RenderTarget* target_;
   HDC hdc_;
   float scale_factor_;
-
-  // Whether the target is managed by us.
-  bool should_release_ = false;
 
   scoped_refptr<DWriteTextRenderer> text_renderer_;
 

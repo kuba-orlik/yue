@@ -12,6 +12,7 @@
 
 #include "base/strings/utf_string_conversions.h"
 #include "nativeui/gfx/attributed_text.h"
+#include "nativeui/gfx/win/double_buffer.h"
 #include "nativeui/table_model.h"
 #include "nativeui/win/util/hwnd_util.h"
 
@@ -201,19 +202,25 @@ LRESULT TableImpl::OnCustomDraw(NMLVCUSTOMDRAW* nm, int row) {
     if (options.type != Table::ColumnType::Custom || !options.on_draw)
       continue;
     const base::Value* value = model->GetValue(options.column, row);
+
     // Calculate the rect of each cell.
     RECT rc;
     ListView_GetSubItemRect(hwnd(), row, i, LVIR_BOUNDS, &rc);
-    RectF rect = ScaleRect(RectF(Rect(rc)), 1.f / scale_factor());
+    Rect rect(rc);
     // Reduce the cell area so the focus ring can show.
     rect.Inset(1.f, 1.f);
-    // Get window size (needed by PainterWin).
-    GetClientRect(hwnd(), &rc);
-    // Draw.
-    PainterWin painter(nm->nmcd.hdc, Rect(rc).size(), scale_factor());
-    painter.Translate(rect.OffsetFromOrigin());
-    painter.ClipRect(rect);
-    options.on_draw(&painter, rect, value ? value->Clone() : base::Value());
+
+    // Draw on a small extra buffer as Direct2d is expensive on large window.
+    DoubleBuffer buffer(nm->nmcd.hdc, rect.size());
+    {
+      PainterWin painter(&buffer, scale_factor());
+      RectF bounds(ScaleSize(SizeF(rect.size()), 1.f / scale_factor()));
+      options.on_draw(&painter, bounds, value ? value->Clone() : base::Value());
+    }
+
+    // Copy data back.
+    BitBlt(nm->nmcd.hdc, rect.x(), rect.y(), rect.width(), rect.height(),
+           buffer.dc(), 0, 0, SRCCOPY);
   }
   return CDRF_SKIPDEFAULT;
 }

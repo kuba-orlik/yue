@@ -28,6 +28,7 @@ class ScopedCOMInitializer;
 
 typedef struct IDWriteFactory IDWriteFactory;
 typedef struct ID2D1Factory ID2D1Factory;
+typedef struct ID2D1DCRenderTarget ID2D1DCRenderTarget;
 typedef interface IWICImagingFactory IWICImagingFactory;
 #endif  // defined(OS_WIN)
 
@@ -70,6 +71,7 @@ class NATIVEUI_EXPORT State {
   UINT GetNextCommandID();
   IDWriteFactory* GetDWriteFactory();
   ID2D1Factory* GetD2D1Factory();
+  ID2D1DCRenderTarget* GetDCRenderTarget(float scale_factor);
   IWICImagingFactory* GetWICFactory();
 #endif
 
@@ -90,6 +92,8 @@ class NATIVEUI_EXPORT State {
   Microsoft::WRL::ComPtr<IDWriteFactory> dwrite_factory_;
   Microsoft::WRL::ComPtr<ID2D1Factory> d2d1_factory_;
   Microsoft::WRL::ComPtr<IWICImagingFactory> wic_factory_;
+  std::map<float,
+           Microsoft::WRL::ComPtr<ID2D1DCRenderTarget>> dc_render_targets_;
 
   // Next ID for custom WM_COMMAND items, the number came from:
   // https://msdn.microsoft.com/en-us/library/11861byt.aspx

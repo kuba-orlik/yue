@@ -6,7 +6,6 @@
 
 #define _USE_MATH_DEFINES
 #include <math.h>
-#include <wincodec.h>
 
 #include <memory>
 
@@ -28,25 +27,12 @@ namespace nu {
 
 namespace {
 
-ID2D1RenderTarget* CreateDCRenderTarget(
-    HDC hdc, const Size& size, float scale_factor) {
-  float dpi = GetDPIFromScalingFactor(scale_factor);
-
-  Microsoft::WRL::ComPtr<ID2D1DCRenderTarget> target;
-  D2D1_RENDER_TARGET_PROPERTIES properties = {
-    D2D1_RENDER_TARGET_TYPE_DEFAULT,
-    {DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED},
-    dpi, dpi,
-    D2D1_RENDER_TARGET_USAGE_NONE,
-    D2D1_FEATURE_LEVEL_DEFAULT,
-  };
-  CHECK(SUCCEEDED(State::GetCurrent()->GetD2D1Factory()->CreateDCRenderTarget(
-                      &properties, &target)));
-
-  RECT rc = nu::Rect(size).ToRECT();
-  target->BindDC(hdc, &rc);
-  target->SetDpi(dpi, dpi);
-  return target.Detach();
+ID2D1RenderTarget* CreateDCRenderTarget(DoubleBuffer* buffer,
+                                        float scale_factor) {
+  auto* target = State::GetCurrent()->GetDCRenderTarget(scale_factor);
+  RECT rc = nu::Rect(buffer->size()).ToRECT();
+  target->BindDC(buffer->dc(), &rc);
+  return target;
 }
 
 // Code modified from Microsoft/WinObjC:
@@ -89,10 +75,8 @@ PainterWin::PainterWin(ID2D1RenderTarget* target, HDC hdc)
   target_->BeginDraw();
 }
 
-PainterWin::PainterWin(HDC hdc, const Size& size, float scale_factor)
-    : PainterWin(CreateDCRenderTarget(hdc, size, scale_factor), hdc) {
-  should_release_ = true;
-}
+PainterWin::PainterWin(DoubleBuffer* buffer, float scale_factor)
+    : PainterWin(CreateDCRenderTarget(buffer, scale_factor), buffer->dc()) {}
 
 PainterWin::~PainterWin() {
   EndDraw();
@@ -104,10 +88,6 @@ bool PainterWin::EndDraw() {
 
   PopLayer();
   bool recreate = target_->EndDraw() == D2DERR_RECREATE_TARGET;
-
-  if (should_release_)
-    target_->Release();
-
   target_ = nullptr;
   return recreate;
 }
@@ -135,21 +115,16 @@ void PainterWin::DrawNativeTheme(NativeTheme::Part part,
   State::GetCurrent()->GetNativeTheme()->Paint(
       part, buffer.dc(), state, src, extra);
 
-  // Convert offscreen buffer to bitmap.
-  IWICImagingFactory* wic_factory = State::GetCurrent()->GetWICFactory();
-  Microsoft::WRL::ComPtr<IWICBitmap> wic_bitmap;
-  wic_factory->CreateBitmapFromHBITMAP(
-      buffer.bitmap(), NULL, WICBitmapUsePremultipliedAlpha, &wic_bitmap);
+  // Copy the dirty part back.
+  //
   // FIXME(zcbenz): This is extremely slow when the component has a large size,
   // we should cache the result in views.
-  Microsoft::WRL::ComPtr<ID2D1Bitmap> bitmap;
-  target_->CreateBitmapFromWicBitmap(wic_bitmap.Get(), &bitmap);
-
-  // Copy the dirty part back.
+  Microsoft::WRL::ComPtr<ID2D1Bitmap> bitmap =
+      buffer.GetD2D1Bitmap(target_, scale_factor_);
   target_->DrawBitmap(bitmap.Get(), intersect.ToD2D1());
 }
 
-void PainterWin::DrawFocusRect(const nu::RectF& rect) {
+void PainterWin::DrawFocusRect(const RectF& rect) {
   static Color ring_color = System::GetColor(System::Color::DisabledText);
   Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> brush;
   target_->CreateSolidColorBrush(ring_color.ToD2D1(), &brush);
@@ -441,10 +416,27 @@ void PainterWin::DrawImageFromRect(Image* image, const RectF& src,
 }
 
 void PainterWin::DrawCanvas(Canvas* canvas, const RectF& rect) {
+  auto* painter = static_cast<PainterWin*>(canvas->GetPainter());
+  painter->target_->EndDraw();
+
+  Microsoft::WRL::ComPtr<ID2D1Bitmap> bitmap =
+      canvas->GetBitmap()->GetD2D1Bitmap(target_, scale_factor_);
+  target_->DrawBitmap(bitmap.Get(), rect.ToD2D1());
+
+  painter->target_->BeginDraw();
 }
 
 void PainterWin::DrawCanvasFromRect(Canvas* canvas, const RectF& src,
                                     const RectF& dest) {
+  auto* painter = static_cast<PainterWin*>(canvas->GetPainter());
+  painter->target_->EndDraw();
+
+  Microsoft::WRL::ComPtr<ID2D1Bitmap> bitmap =
+      canvas->GetBitmap()->GetD2D1Bitmap(target_, scale_factor_);
+  target_->DrawBitmap(bitmap.Get(), dest.ToD2D1(), 1.f,
+                      D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, src.ToD2D1());
+
+  painter->target_->BeginDraw();
 }
 
 void PainterWin::DrawAttributedText(AttributedText* text, const RectF& rect) {
