@@ -112,6 +112,10 @@ RectF View::GetBounds() const {
   return RectF([view_ frame]);
 }
 
+RectF View::GetLocalBounds() const {
+  return RectF([view_ bounds]);
+}
+
 void View::SetPixelBounds(const Rect& bounds) {
   SetBounds(RectF(bounds));
 }

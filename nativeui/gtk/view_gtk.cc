@@ -295,6 +295,17 @@ RectF View::GetBounds() const {
   return RectF(GetPixelBounds());
 }
 
+RectF View::GetLocalBounds() const {
+  GdkRectangle rect;
+  gtk_widget_get_allocation(view_, &rect);
+  Rect bounds = Rect(rect);
+  // GTK uses (-1, -1, 1, 1) and (0, 0, 1, 1) as empty bounds, we should match
+  // the behavior of other platforms by returning an empty rect.
+  if (bounds == Rect(-1, -1, 1, 1) || bounds == Rect(0, 0, 1, 1))
+    return RectF();
+  return RectF(SizeF(bounds.size()));
+}
+
 void View::SetPixelBounds(const Rect& bounds) {
   // The size allocation is relative to the window instead of parent.
   GdkRectangle rect = bounds.ToGdkRectangle();

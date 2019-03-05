@@ -139,6 +139,9 @@ class WindowImpl : public Win32Window,
   void TrackMouse(bool enable);
   bool GetClientAreaInsets(Insets* insets);
 
+  // The drawing target.
+  Microsoft::WRL::ComPtr<ID2D1HwndRenderTarget> target_;
+
   FocusManager focus_manager_;
   bool mouse_in_window_ = false;
 

@@ -16,6 +16,8 @@
 
 #if defined(OS_MACOSX)
 typedef struct CGRect CGRect;
+#elif defined(OS_WIN)
+typedef struct D2D_RECT_F D2D1_RECT_F;
 #endif
 
 namespace nu {
@@ -43,6 +45,8 @@ class NATIVEUI_EXPORT RectF {
   explicit RectF(const CGRect& r);
   // Construct an equivalent CoreGraphics object.
   CGRect ToCGRect() const;
+#elif defined(OS_WIN)
+  D2D1_RECT_F ToD2D1() const;
 #endif
 
   ~RectF() {}

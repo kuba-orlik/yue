@@ -15,6 +15,8 @@
 
 #if defined(OS_MACOSX)
 typedef struct CGPoint CGPoint;
+#elif defined(OS_WIN)
+typedef struct D2D_POINT_2F D2D1_POINT_2F;
 #endif
 
 namespace nu {
@@ -33,6 +35,8 @@ class NATIVEUI_EXPORT PointF {
   explicit PointF(const CGPoint& r);
   // Construct an equivalent CoreGraphics object.
   CGPoint ToCGPoint() const;
+#elif defined(OS_WIN)
+  D2D1_POINT_2F ToD2D1() const;
 #endif
 
   float x() const { return x_; }

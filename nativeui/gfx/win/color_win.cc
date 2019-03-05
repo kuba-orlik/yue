@@ -10,7 +10,7 @@ COLORREF Color::ToCOLORREF() const {
   return RGB(r(), g(), b());
 }
 
-D2D1_COLOR_F Color::ToD2D1Color() const {
+D2D1_COLOR_F Color::ToD2D1() const {
   return {r() / 255.f, g() / 255.f, b() / 255.f, a() / 255.f};
 }
 

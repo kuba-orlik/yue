@@ -28,14 +28,13 @@ class ScopedCOMInitializer;
 
 typedef struct IDWriteFactory IDWriteFactory;
 typedef struct ID2D1Factory ID2D1Factory;
-typedef struct ID2D1DCRenderTarget ID2D1DCRenderTarget;
+typedef interface IWICImagingFactory IWICImagingFactory;
 #endif  // defined(OS_WIN)
 
 namespace nu {
 
 #if defined(OS_WIN)
 class ClassRegistrar;
-class DWriteTextRenderer;
 class GdiplusHolder;
 class NativeTheme;
 class SubwinHolder;
@@ -71,8 +70,7 @@ class NATIVEUI_EXPORT State {
   UINT GetNextCommandID();
   IDWriteFactory* GetDWriteFactory();
   ID2D1Factory* GetD2D1Factory();
-  ID2D1DCRenderTarget* GetDCRenderTarget(float scale_factor);
-  DWriteTextRenderer* GetDwriteTextRenderer(float scale_factor);
+  IWICImagingFactory* GetWICFactory();
 #endif
 
   // Internal: Return the default yoga config.
@@ -91,10 +89,7 @@ class NATIVEUI_EXPORT State {
   std::unique_ptr<TrayHost> tray_host_;
   Microsoft::WRL::ComPtr<IDWriteFactory> dwrite_factory_;
   Microsoft::WRL::ComPtr<ID2D1Factory> d2d1_factory_;
-
-  std::map<float,
-           Microsoft::WRL::ComPtr<ID2D1DCRenderTarget>> dc_render_targets_;
-  std::map<float, scoped_refptr<DWriteTextRenderer>> dwrite_text_renderers_;
+  Microsoft::WRL::ComPtr<IWICImagingFactory> wic_factory_;
 
   // Next ID for custom WM_COMMAND items, the number came from:
   // https://msdn.microsoft.com/en-us/library/11861byt.aspx

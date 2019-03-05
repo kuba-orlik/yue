@@ -39,7 +39,7 @@ bool ScrollbarButton::OnMouseClick(NativeEvent event) {
   return Clickable::OnMouseClick(event);
 }
 
-void ScrollbarButton::Draw(PainterWin* painter, const Rect& dirty) {
+void ScrollbarButton::Draw(PainterWin* painter, const Rect& raw_dirty) {
   NativeTheme::Part part = NativeTheme::Part::ScrollbarUpArrow;
   switch (type_) {
     case Up:
@@ -55,10 +55,10 @@ void ScrollbarButton::Draw(PainterWin* painter, const Rect& dirty) {
       part = NativeTheme::Part::ScrollbarRightArrow;
       break;
   }
+  RectF dirty = ScaleRect(RectF(raw_dirty), 1.f / scale_factor());
   NativeTheme::ExtraParams params;
   params.scrollbar_arrow = params_;
-  painter->DrawNativeTheme(
-      part, state(), Rect(size_allocation().size()), params);
+  painter->DrawNativeTheme(part, state(), GetDIPLocalBounds(), dirty, params);
 }
 
 }  // namespace nu

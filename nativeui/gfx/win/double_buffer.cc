@@ -30,6 +30,11 @@ DoubleBuffer::DoubleBuffer(HWND hwnd, const Size& size)
   ::ReleaseDC(hwnd, dc_);
 }
 
+DoubleBuffer::DoubleBuffer(HDC dc, const Size& size)
+    : DoubleBuffer(dc, size, Rect(), Point()) {
+  copy_on_destruction_ = false;
+}
+
 DoubleBuffer::DoubleBuffer(HDC dc, const Size& size, const Rect& src,
                            const Point& dest)
     : dc_(dc), src_(src), dest_(dest),

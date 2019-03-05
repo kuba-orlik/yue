@@ -41,20 +41,20 @@ class TabItem : public ViewImpl {
   }
 
   // ViewImpl:
-  void Draw(PainterWin* painter, const Rect& dirty) override {
+  void Draw(PainterWin* painter, const Rect& raw_dirty) override {
     // The selected item overflows 1-pixel on bottom, so the border of tab
     // panel won't show.
-    Rect rect(size_allocation().size());
+    RectF bounds = GetDIPLocalBounds();
     if (!selected_)
-      rect.Inset(0, 0, 0, 1);
+      bounds.Inset(0, 0, 0, 1);
 
     // Draw background.
-    NativeTheme::ExtraParams params;
-    painter->DrawNativeTheme(NativeTheme::Part::TabItem, state(), rect, params);
+    RectF dirty = ScaleRect(RectF(raw_dirty), 1.f / scale_factor());
+    painter->DrawNativeTheme(NativeTheme::Part::TabItem, state(),
+                             bounds, dirty, NativeTheme::ExtraParams());
 
     // Draw title.
-    painter->DrawAttributedText(text_.get(),
-                                ScaleRect(RectF(rect), 1.f / scale_factor()));
+    painter->DrawAttributedText(text_.get(), bounds);
   }
 
   void OnMouseEnter(NativeEvent event) override {
@@ -208,9 +208,9 @@ class TabImpl : public ContainerImpl,
     ViewImpl* content = GetSelectedPage();
     if (content) {
       Rect rect(size_allocation());
-      rect.Inset(kContentPadding * scale_factor(),
-                 kContentPadding * scale_factor());
-      rect.Inset(0, height - 1 * scale_factor(), 0, 0);
+      rect.Inset(std::ceil(kContentPadding * scale_factor()),
+                 std::ceil(kContentPadding * scale_factor()));
+      rect.Inset(0, std::ceil(height - 1 * scale_factor()), 0, 0);
       content->SizeAllocate(rect);
     }
 
@@ -254,18 +254,24 @@ class TabImpl : public ContainerImpl,
       item->SetColor(color);
   }
 
-  void Draw(PainterWin* painter, const Rect& dirty) override {
-    // Draw panel background.
-    Rect rect(size_allocation().size());
-    if (!items_.empty()) {
-      int height = std::ceil(GetItemsHeight() * scale_factor() - 1);
-      rect.Inset(0, height, 0, 0);
-    }
-    NativeTheme::ExtraParams params;
-    painter->DrawNativeTheme(NativeTheme::Part::TabPanel,
-                             state(), rect, params);
+  void Draw(PainterWin* painter, const Rect& raw_dirty) override {
+    RectF dirty = ScaleRect(RectF(raw_dirty), 1.f / scale_factor());
 
-    ContainerImpl::Draw(painter, dirty);
+    // Draw panel background.
+    RectF bounds = GetDIPLocalBounds();
+    if (!items_.empty())
+      bounds.Inset(0, GetItemsHeight() - 1, 0, 0);
+    painter->DrawNativeTheme(NativeTheme::Part::TabPanel, state(),
+                             bounds, dirty, NativeTheme::ExtraParams());
+
+    // Draw items.
+    for (auto& item : items_)
+      DrawChild(item.get(), painter, raw_dirty);
+
+    // Draw content view.
+    ViewImpl* content = GetSelectedPage();
+    if (content)
+      DrawChild(content, painter, raw_dirty);
   }
 
   void OnDPIChanged() override {

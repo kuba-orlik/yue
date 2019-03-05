@@ -15,6 +15,7 @@
 
 #if defined(OS_WIN)
 typedef struct tagSIZE SIZE;
+typedef struct D2D_SIZE_U D2D1_SIZE_U;
 #elif defined(OS_MACOSX)
 typedef struct CGSize CGSize;
 #endif
@@ -39,6 +40,7 @@ class NATIVEUI_EXPORT Size {
 
 #if defined(OS_WIN)
   SIZE ToSIZE() const;
+  D2D1_SIZE_U ToD2D1() const;
 #elif defined(OS_MACOSX)
   CGSize ToCGSize() const;
 #endif

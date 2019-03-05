@@ -153,7 +153,7 @@ void ViewImpl::RegisterDraggedTypes(std::set<Clipboard::Data::Type> types) {
 void ViewImpl::Draw(PainterWin* painter, const Rect& dirty) {
   if (!background_color_.transparent()) {
     painter->SetColor(background_color_);
-    painter->FillRectPixel(dirty);
+    painter->FillRect(ScaleRect(RectF(dirty), 1.f / scale_factor()));
   }
 }
 
@@ -313,6 +313,11 @@ Rect ViewImpl::GetClippedRect() const {
   return rect;
 }
 
+RectF ViewImpl::GetDIPLocalBounds() const {
+  Rect bounds(size_allocation().size());
+  return ScaleRect(RectF(bounds), 1.f / scale_factor());
+}
+
 void ViewImpl::SetVisible(bool visible) {
   is_visible_ = visible;
   VisibilityChanged();
@@ -367,6 +372,10 @@ void View::SetBounds(const RectF& bounds) {
 
 RectF View::GetBounds() const {
   return ScaleRect(RectF(GetPixelBounds()), 1.0f / GetNative()->scale_factor());
+}
+
+RectF View::GetLocalBounds() const {
+  return GetNative()->GetDIPLocalBounds();
 }
 
 void View::SetPixelBounds(const Rect& bounds) {

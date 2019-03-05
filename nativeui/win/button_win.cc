@@ -98,8 +98,10 @@ class ButtonImpl : public Clickable {
   }
 
   // ViewImpl:
-  void Draw(PainterWin* painter, const Rect& dirty) override {
+  void Draw(PainterWin* painter, const Rect& raw_dirty) override {
     SizeF size = delegate()->GetBounds().size();
+    RectF dirty = ScaleRect(RectF(raw_dirty), 1.f / scale_factor());
+
     SizeF preferred_size = GetPreferredSize();
 
     NativeTheme::ExtraParams params;
@@ -108,11 +110,11 @@ class ButtonImpl : public Clickable {
     // Draw the button background,
     if (type() == ControlType::Button)
       painter->DrawNativeTheme(NativeTheme::Part::Button,
-                               state(), Rect(size_allocation().size()), params);
+                               state(), RectF(size), dirty, params);
 
     // Draw control background as a layer on button background.
     if (!background_color().transparent())
-      ViewImpl::Draw(painter, dirty);
+      ViewImpl::Draw(painter, raw_dirty);
 
     // Checkbox and radio are left aligned.
     PointF origin;
@@ -137,9 +139,7 @@ class ButtonImpl : public Clickable {
       painter->DrawNativeTheme(
           type() == ControlType::Checkbox ? NativeTheme::Part::Checkbox
                                           : NativeTheme::Part::Radio,
-          state(),
-          ToNearestRect(ScaleRect(box_bounds, scale_factor())),
-          params);
+          state(), box_bounds, dirty, params);
     }
 
     // The bounds of text.
@@ -155,12 +155,12 @@ class ButtonImpl : public Clickable {
 
     // Draw focused ring.
     if (HasFocus()) {
-      Rect rect;
+      RectF rect;
       if (type() == ControlType::Button) {
-        rect = Rect(size_allocation().size());
-        rect.Inset(Insets(std::ceil(1 * scale_factor())));
+        rect = RectF(size);
+        rect.Inset(InsetsF(1));
       } else {
-        rect = ToNearestRect(ScaleRect(text_bounds, scale_factor()));
+        rect = text_bounds;
         rect.Inset(-Insets(kButtonPadding));
       }
       painter->DrawFocusRect(rect);

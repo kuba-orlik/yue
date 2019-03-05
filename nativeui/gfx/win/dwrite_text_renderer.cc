@@ -8,13 +8,13 @@
 
 #include "base/logging.h"
 #include "nativeui/gfx/win/drawing_effect.h"
+#include "nativeui/gfx/win/screen_win.h"
 #include "nativeui/system.h"
 
 namespace nu {
 
-DWriteTextRenderer::DWriteTextRenderer(ID2D1DCRenderTarget* target,
-                                       float scale_factor)
-    : target_(target), scale_factor_(scale_factor) {}
+DWriteTextRenderer::DWriteTextRenderer(ID2D1RenderTarget* target)
+    : target_(target) {}
 
 DWriteTextRenderer::~DWriteTextRenderer() {}
 
@@ -36,7 +36,7 @@ HRESULT __stdcall DWriteTextRenderer::DrawGlyphRun(
     if (it == brushes_.end()) {
       Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> brush;
       target_->CreateSolidColorBrush(
-          drawing_effect->fg_color.ToD2D1Color(), brush.GetAddressOf());
+          drawing_effect->fg_color.ToD2D1(), brush.GetAddressOf());
       it = brushes_.emplace(drawing_effect->fg_color.value(), brush).first;
     }
     brush = it->second.Get();
@@ -46,7 +46,7 @@ HRESULT __stdcall DWriteTextRenderer::DrawGlyphRun(
   if (!brush) {
     if (!default_brush_)
       target_->CreateSolidColorBrush(
-          System::GetColor(System::Color::Text).ToD2D1Color(),
+          System::GetColor(System::Color::Text).ToD2D1(),
           default_brush_.GetAddressOf());
     brush = default_brush_.Get();
   }
@@ -107,7 +107,9 @@ HRESULT __stdcall DWriteTextRenderer::GetCurrentTransform(
 HRESULT __stdcall DWriteTextRenderer::GetPixelsPerDip(
     void* clientDrawingContext,
     FLOAT* pixelsPerDip) {
-  *pixelsPerDip = scale_factor_;
+  float dpi;
+  target_->GetDpi(&dpi, &dpi);
+  *pixelsPerDip = GetScalingFactorFromDPI(dpi);
   return S_OK;
 }
 

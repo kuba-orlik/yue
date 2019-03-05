@@ -204,19 +204,16 @@ LRESULT TableImpl::OnCustomDraw(NMLVCUSTOMDRAW* nm, int row) {
     // Calculate the rect of each cell.
     RECT rc;
     ListView_GetSubItemRect(hwnd(), row, i, LVIR_BOUNDS, &rc);
-    Rect rect(rc);
+    RectF rect = ScaleRect(RectF(Rect(rc)), 1.f / scale_factor());
     // Reduce the cell area so the focus ring can show.
-    int space = 1 * scale_factor();
-    rect.Inset(space, space);
+    rect.Inset(1.f, 1.f);
     // Get window size (needed by PainterWin).
     GetClientRect(hwnd(), &rc);
     // Draw.
     PainterWin painter(nm->nmcd.hdc, Rect(rc).size(), scale_factor());
-    painter.TranslatePixel(rect.OffsetFromOrigin());
-    painter.ClipRectPixel(Rect(rect.size()));
-    options.on_draw(&painter,
-                    RectF(ScaleSize(SizeF(rect.size()), 1.f / scale_factor())),
-                    value ? value->Clone() : base::Value());
+    painter.Translate(rect.OffsetFromOrigin());
+    painter.ClipRect(rect);
+    options.on_draw(&painter, rect, value ? value->Clone() : base::Value());
   }
   return CDRF_SKIPDEFAULT;
 }

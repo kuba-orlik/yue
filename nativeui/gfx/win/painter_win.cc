@@ -6,369 +6,449 @@
 
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include <wincodec.h>
 
 #include <memory>
 
 #include "base/strings/utf_string_conversions.h"
-#include "base/win/scoped_gdi_object.h"
-#include "base/win/scoped_select_object.h"
 #include "nativeui/gfx/attributed_text.h"
 #include "nativeui/gfx/canvas.h"
 #include "nativeui/gfx/font.h"
-#include "nativeui/gfx/geometry/point_conversions.h"
 #include "nativeui/gfx/geometry/rect_conversions.h"
-#include "nativeui/gfx/geometry/vector2d_conversions.h"
+#include "nativeui/gfx/geometry/size_conversions.h"
 #include "nativeui/gfx/image.h"
 #include "nativeui/gfx/win/direct_write.h"
 #include "nativeui/gfx/win/double_buffer.h"
 #include "nativeui/gfx/win/dwrite_text_renderer.h"
+#include "nativeui/gfx/win/screen_win.h"
 #include "nativeui/state.h"
+#include "nativeui/system.h"
 
 namespace nu {
 
 namespace {
 
-Gdiplus::StringAlignment ToGdi(TextAlign align) {
-  switch (align) {
-    case TextAlign::Start: return Gdiplus::StringAlignmentNear;
-    case TextAlign::Center: return Gdiplus::StringAlignmentCenter;
-    case TextAlign::End: return Gdiplus::StringAlignmentFar;
-  }
-  NOTREACHED();
-  return Gdiplus::StringAlignmentNear;
+ID2D1RenderTarget* CreateDCRenderTarget(
+    HDC hdc, const Size& size, float scale_factor) {
+  float dpi = GetDPIFromScalingFactor(scale_factor);
+
+  Microsoft::WRL::ComPtr<ID2D1DCRenderTarget> target;
+  D2D1_RENDER_TARGET_PROPERTIES properties = {
+    D2D1_RENDER_TARGET_TYPE_DEFAULT,
+    {DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED},
+    dpi, dpi,
+    D2D1_RENDER_TARGET_USAGE_NONE,
+    D2D1_FEATURE_LEVEL_DEFAULT,
+  };
+  CHECK(SUCCEEDED(State::GetCurrent()->GetD2D1Factory()->CreateDCRenderTarget(
+                      &properties, &target)));
+
+  RECT rc = nu::Rect(size).ToRECT();
+  target->BindDC(hdc, &rc);
+  target->SetDpi(dpi, dpi);
+  return target.Detach();
+}
+
+// Code modified from Microsoft/WinObjC:
+// WinObjC/Frameworks/CoreGraphics/CGPath.mm
+//
+// Copyright (c) 2016 Microsoft Corporation. All rights reserved.
+// This code is licensed under the MIT License (MIT).
+//
+// This function will return a normalized angle in radians between 0 and 2pi.
+// This is to standardize the calculations for arcs since 0, 2pi, 4pi, etc...
+// are all visually the same angle.
+inline float NormalizeAngle(float angle) {
+  float normalized = fmod(angle, 2.f * M_PI);
+  if (abs(normalized) < .00001 /* zeroAngleThreshold */)
+    normalized = 0;
+  if (normalized == 0 && angle != 0)
+    return static_cast<float>(2.f * M_PI);
+  return normalized;
+}
+
+inline PointF PointOnAngle(float angle, float radius, int x, int y) {
+  return PointF(x + radius * cos(angle), y + radius * sin(angle));
 }
 
 }  // namespace
 
-PainterWin::PainterWin(HDC hdc, const Size& size, float scale_factor)
-    : graphics_(hdc), size_(size) {
-  Initialize(scale_factor);
+PainterWin::PainterWin(ID2D1RenderTarget* target, HDC hdc)
+    : factory_(State::GetCurrent()->GetD2D1Factory()),
+      target_(target),
+      hdc_(hdc) {
+  // Initial state.
+  states_.emplace(PainterState());
+
+  // Read scale factor.
+  float dpi;
+  target_->GetDpi(&dpi, &dpi);
+  scale_factor_ = GetScalingFactorFromDPI(dpi);
+
+  target_->SetTransform(matrix());
+  target_->BeginDraw();
 }
 
-PainterWin::~PainterWin() {}
+PainterWin::PainterWin(HDC hdc, const Size& size, float scale_factor)
+    : PainterWin(CreateDCRenderTarget(hdc, size, scale_factor), hdc) {
+  should_release_ = true;
+}
+
+PainterWin::~PainterWin() {
+  PopLayer();
+  target_->EndDraw();
+
+  if (should_release_)
+    target_->Release();
+}
 
 void PainterWin::DrawNativeTheme(NativeTheme::Part part,
                                  ControlState state,
-                                 const nu::Rect& rect,
+                                 const RectF& rect,
+                                 const RectF& dirty,
                                  const NativeTheme::ExtraParams& extra) {
-  HDC hdc = GetHDC();
+  // Is there nothing to draw.
+  if (rect.size().IsEmpty())
+    return;
+  RectF intersect(rect);
+  intersect.Intersect(dirty);
+  if (intersect.IsEmpty())
+    return;
+
+  // Only draw the part that needs to be refreshed.
+  RectF src_rect = rect - intersect.OffsetFromOrigin();
+  nu::Rect src = ToEnclosingRect(ScaleRect(src_rect, scale_factor_));
+  Size size = ToCeiledSize(ScaleSize(intersect.size(), scale_factor_));
+
+  // Draw the part on offscreen buffer.
+  DoubleBuffer buffer(hdc_, size);
   State::GetCurrent()->GetNativeTheme()->Paint(
-      part, hdc, state, rect, extra);
-  ReleaseHDC(hdc);
+      part, buffer.dc(), state, src, extra);
+
+  // Convert offscreen buffer to bitmap.
+  IWICImagingFactory* wic_factory = State::GetCurrent()->GetWICFactory();
+  Microsoft::WRL::ComPtr<IWICBitmap> wic_bitmap;
+  wic_factory->CreateBitmapFromHBITMAP(
+      buffer.bitmap(), NULL, WICBitmapUsePremultipliedAlpha, &wic_bitmap);
+  // FIXME(zcbenz): This is extremely slow when the component has a large size,
+  // we should cache the result in views.
+  Microsoft::WRL::ComPtr<ID2D1Bitmap> bitmap;
+  target_->CreateBitmapFromWicBitmap(wic_bitmap.Get(), &bitmap);
+
+  // Copy the dirty part back.
+  target_->DrawBitmap(bitmap.Get(), intersect.ToD2D1());
 }
 
-void PainterWin::DrawFocusRect(const nu::Rect& rect) {
-  RECT r = rect.ToRECT();
-  HDC hdc = GetHDC();
-  ::DrawFocusRect(hdc, &r);
-  ReleaseHDC(hdc);
+void PainterWin::DrawFocusRect(const nu::RectF& rect) {
+  static Color ring_color = System::GetColor(System::Color::DisabledText);
+  Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> brush;
+  target_->CreateSolidColorBrush(ring_color.ToD2D1(), &brush);
+  Microsoft::WRL::ComPtr<ID2D1StrokeStyle> style;
+  float dashes[] = {2.f, 2.f};
+  factory_->CreateStrokeStyle(
+      D2D1::StrokeStyleProperties(
+          D2D1_CAP_STYLE_FLAT,
+          D2D1_CAP_STYLE_FLAT,
+          D2D1_CAP_STYLE_FLAT,
+          D2D1_LINE_JOIN_MITER,
+          10.0f,
+          D2D1_DASH_STYLE_CUSTOM,
+          0.0f),
+      dashes, arraysize(dashes), &style);
+  target_->DrawRectangle(rect.ToD2D1(), brush.Get(), 1.f, style.Get());
 }
 
 void PainterWin::Save() {
   states_.push(top());
-  top().state = graphics_.Save();
+  top().layer_changed = false;
+  if (SUCCEEDED(factory_->CreateDrawingStateBlock(nullptr, nullptr,
+                                                  &top().state)))
+    target_->SaveDrawingState(top().state.Get());
+  else
+    LOG(ERROR) << "Failed to create drawing state block";
 }
 
 void PainterWin::Restore() {
   if (states_.size() == 1)
     return;
-  graphics_.Restore(top().state);
+  target_->RestoreDrawingState(top().state.Get());
+  PopLayer();
   states_.pop();
 }
 
 void PainterWin::BeginPath() {
-  use_gdi_current_point_ = true;
-  path_.Reset();
-  path_.StartFigure();
+  factory_->CreatePathGeometry(&path_);
+  path_->Open(&sink_);
+
+  in_figure_ = false;
+  start_point_ = last_point_ = PointF();
 }
 
 void PainterWin::ClosePath() {
-  use_gdi_current_point_ = true;
-  path_.CloseAllFigures();
+  if (sink_) {
+    if (in_figure_) {
+      sink_->EndFigure(D2D1_FIGURE_END_CLOSED);
+    }
+    sink_->Close();
+    sink_.Reset();
+  }
+
+  in_figure_ = false;
+  start_point_ = last_point_ = PointF();
 }
 
 void PainterWin::MoveTo(const PointF& point) {
-  path_.StartFigure();
-  use_gdi_current_point_ = false;
-  current_point_ = ToGdi(ScalePoint(point, scale_factor_));
+  if (!sink_)
+    BeginPath();
+  if (in_figure_)
+    sink_->EndFigure(D2D1_FIGURE_END_OPEN);
+  sink_->BeginFigure(point.ToD2D1(), D2D1_FIGURE_BEGIN_FILLED);
+
+  in_figure_ = true;
+  start_point_ = last_point_ = point;
 }
 
 void PainterWin::LineTo(const PointF& point) {
-  Gdiplus::PointF start;
-  if (!GetCurrentPoint(&start)) {
-    MoveTo(point);
-    return;
-  }
-  use_gdi_current_point_ = true;
-  path_.AddLine(start, ToGdi(ScalePoint(point, scale_factor_)));
+  if (!sink_)
+    MoveTo(last_point_);
+  sink_->AddLine(point.ToD2D1());
+  last_point_ = point;
 }
 
 void PainterWin::BezierCurveTo(const PointF& cp1,
                                const PointF& cp2,
                                const PointF& ep) {
-  Gdiplus::PointF start;
-  if (!GetCurrentPoint(&start)) {
-    MoveTo(ep);
-    return;
-  }
-  use_gdi_current_point_ = true;
-  path_.AddBezier(start,
-                  ToGdi(ScalePoint(cp1, scale_factor_)),
-                  ToGdi(ScalePoint(cp2, scale_factor_)),
-                  ToGdi(ScalePoint(ep, scale_factor_)));
+  if (!sink_)
+    MoveTo(last_point_);
+  sink_->AddBezier({cp1.ToD2D1(), cp2.ToD2D1(), ep.ToD2D1()});
+  last_point_ = ep;
 }
 
 void PainterWin::Arc(const PointF& point, float radius, float sa, float ea) {
-  PointF p = ScalePoint(point, scale_factor_);
-  radius *= scale_factor_;
-  bool anticlockwise = false;
+  // Code modified from Microsoft/WinObjC:
+  // WinObjC/Frameworks/CoreGraphics/CGPath.mm
+  //
+  // Copyright (c) 2016 Microsoft Corporation. All rights reserved.
+  // This code is licensed under the MIT License (MIT).
 
-  // Normalize the angle.
-  float angle;
-  if (anticlockwise) {
-    if (ea > sa) {
-      while (ea >= sa)
-        ea -= 2.0f * static_cast<float>(M_PI);
-    }
-    angle = sa - ea;
+  // Normalize the angles to work with to values between 0 and 2*PI
+  sa = NormalizeAngle(sa);
+  ea = NormalizeAngle(ea);
+
+  PointF startPoint = PointOnAngle(sa, radius, point.x(), point.y());
+  PointF endPoint = PointOnAngle(ea, radius, point.x(), point.y());
+
+  // Create the parameters for the AddArc method.
+  D2D1_SIZE_F radiusD2D = {radius, radius};
+  D2D1_ARC_SIZE arcSize = D2D1_ARC_SIZE_SMALL;
+
+  // D2D does not understand that the ending angle must be pointing in the
+  // proper direction, thus we must translate what it means to have an ending
+  // angle to the proper small arc or large arc that D2D will use since a circle
+  // will intersect that point regardless of which direction it is drawn in.
+  const bool clockwise = false;
+  float rawDifference = 0;
+  if (clockwise)
+    rawDifference = sa - ea;
+  else
+    rawDifference = ea - sa;
+
+  float difference = rawDifference;
+  if (difference < 0)
+    difference += static_cast<float>(2 * M_PI);
+  if (difference > M_PI)
+    arcSize = D2D1_ARC_SIZE_LARGE;
+
+  rawDifference = abs(rawDifference);
+  if (!clockwise)
+    rawDifference *= -1;
+
+  // The direction of the arc's sweep must be reversed since the coordinate
+  // systems for D2D and CoreGraphics are reversed. CW in D2D is CCW in
+  // CoreGraphics.
+  D2D1_SWEEP_DIRECTION sweepDirection = {
+      clockwise ? D2D1_SWEEP_DIRECTION_COUNTER_CLOCKWISE
+                : D2D1_SWEEP_DIRECTION_CLOCKWISE
+  };
+
+  if (!sink_)
+    BeginPath();
+  if (in_figure_) {
+    if (last_point_ != start_point_)
+      sink_->AddLine(startPoint.ToD2D1());
   } else {
-    if (ea < sa) {
-      while (ea <= sa)
-        ea += 2.0f * static_cast<float>(M_PI);
-    }
-    angle = ea - sa;
+    sink_->BeginFigure(startPoint.ToD2D1(), D2D1_FIGURE_BEGIN_FILLED);
+    start_point_ = last_point_ = startPoint;
   }
 
-  use_gdi_current_point_ = true;
-  path_.AddArc(p.x() - radius, p.y() - radius, 2.0f * radius, 2.0f * radius,
-               sa / M_PI * 180.0f,
-               (anticlockwise ? -angle : angle) / M_PI * 180.0f);
+  // This will only happen when drawing a circle in the clockwise direction
+  // from 2pi to 0, a scenario supported on the reference platform.
+  if (abs(abs(rawDifference) - 2 * M_PI) < .00001 /* zeroAngleThreshold */) {
+    float midPointAngle = sa + rawDifference / 2;
+    PointF midPoint = PointOnAngle(midPointAngle, radius, point.x(), point.y());
+    D2D1_ARC_SEGMENT arcSegment1 = D2D1::ArcSegment(
+        midPoint.ToD2D1(), radiusD2D, rawDifference / 2, sweepDirection,
+        D2D1_ARC_SIZE_SMALL);
+    D2D1_ARC_SEGMENT arcSegment2 = D2D1::ArcSegment(
+        endPoint.ToD2D1(), radiusD2D, rawDifference / 2, sweepDirection,
+        D2D1_ARC_SIZE_SMALL);
+    sink_->AddArc(arcSegment1);
+    sink_->AddArc(arcSegment2);
+  } else {
+    D2D1_ARC_SEGMENT arcSegment = D2D1::ArcSegment(
+        endPoint.ToD2D1(), radiusD2D, rawDifference, sweepDirection, arcSize);
+    sink_->AddArc(arcSegment);
+  }
+
+  in_figure_ = true;
+  last_point_ = point;
 }
 
 void PainterWin::Rect(const RectF& rect) {
-  path_.AddRectangle(ToGdi(ScaleRect(rect, scale_factor_)));
-  // Drawing rectangle should update current point.
   MoveTo(rect.origin());
+  D2D1_POINT_2F lines[] = {
+    {rect.right(), rect.y()},
+    {rect.right(), rect.bottom()},
+    {rect.x(), rect.bottom()},
+    {rect.x(), rect.y()},
+  };
+  sink_->AddLines(lines, arraysize(lines));
+  last_point_ = rect.origin();
 }
 
 void PainterWin::Clip() {
-  graphics_.SetClip(&path_, Gdiplus::CombineModeIntersect);
-  path_.Reset();
+  if (!path_)
+    return;
+
+  ClosePath();
+  PopLayer();
+
+  // Create the layers only when it is changed.
+  if (!top().layer_changed) {
+    if (!top().clip) {
+      // If there was no clip regions, simply reuse path.
+      top().clip = path_;
+    } else {
+      Microsoft::WRL::ComPtr<ID2D1PathGeometry> clip;
+      factory_->CreatePathGeometry(&clip);
+      Microsoft::WRL::ComPtr<ID2D1GeometrySink> sink;
+      clip->Open(&sink);
+      top().clip->CombineWithGeometry(path_.Get(), D2D1_COMBINE_MODE_INTERSECT,
+                                      nullptr, sink.Get());
+      sink->Close();
+      top().clip = clip;
+    }
+    target_->CreateLayer(&top().layer);
+    top().layer_changed = true;
+  }
+
+  // Apply new layer.
+  target_->PushLayer(
+      D2D1::LayerParameters(
+          D2D1::InfiniteRect(),
+          top().clip.Get(),
+          target_->GetAntialiasMode(),
+          D2D1::IdentityMatrix(),
+          1.0,
+          nullptr,
+          D2D1_LAYER_OPTIONS_NONE),
+      top().layer.Get());
 }
 
 void PainterWin::ClipRect(const RectF& rect) {
-  ClipRectPixel(ToEnclosingRect(ScaleRect(rect, scale_factor_)));
+  BeginPath();
+  Rect(rect);
+  Clip();
 }
 
 void PainterWin::Translate(const Vector2dF& offset) {
-  top().matrix = top().matrix *
-                 D2D1::Matrix3x2F::Translation(offset.x(), offset.y());
-  Vector2d po = ToFlooredVector2d(ScaleVector2d(offset, scale_factor_));
-  graphics_.TranslateTransform(po.x(), po.y(), Gdiplus::MatrixOrderAppend);
+  matrix() = matrix() * D2D1::Matrix3x2F::Translation(offset.x(), offset.y());
+  target_->SetTransform(matrix());
 }
 
 void PainterWin::Rotate(float angle) {
-  float degree = angle / M_PI * 180.0f;
-  top().matrix = D2D1::Matrix3x2F::Rotation(degree) * top().matrix;
-  graphics_.RotateTransform(degree);
+  matrix() = D2D1::Matrix3x2F::Rotation(angle / M_PI * 180.f) * matrix();
+  target_->SetTransform(matrix());
 }
 
 void PainterWin::Scale(const Vector2dF& scale) {
-  top().matrix = D2D1::Matrix3x2F::Scale(scale.x(), scale.y()) * top().matrix;
-  graphics_.ScaleTransform(scale.x(), scale.y());
+  matrix() = D2D1::Matrix3x2F::Scale(scale.x(), scale.y()) * matrix();
+  target_->SetTransform(matrix());
 }
 
 void PainterWin::SetColor(Color color) {
-  top().stroke_color = color;
-  top().fill_color = color;
+  SetStrokeColor(color);
+  SetFillColor(color);
 }
 
 void PainterWin::SetStrokeColor(Color color) {
-  top().stroke_color = color;
+  stroke_color() = color;
 }
 
 void PainterWin::SetFillColor(Color color) {
-  top().fill_color = color;
+  fill_color() = color;
 }
 
 void PainterWin::SetLineWidth(float width) {
-  top().line_width = width;
+  line_width() = width;
 }
 
 void PainterWin::Stroke() {
-  Gdiplus::Pen pen(ToGdi(top().stroke_color), top().line_width);
-  graphics_.DrawPath(&pen, &path_);
-  path_.Reset();
+  if (!path_)
+    return;
+  ClosePath();
+  Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> brush;
+  target_->CreateSolidColorBrush(stroke_color().ToD2D1(), &brush);
+  target_->DrawGeometry(path_.Get(), brush.Get(), line_width());
 }
 
 void PainterWin::Fill() {
-  Gdiplus::SolidBrush brush(ToGdi(top().fill_color));
-  graphics_.FillPath(&brush, &path_);
-  path_.Reset();
+  if (!path_)
+    return;
+  ClosePath();
+  Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> brush;
+  target_->CreateSolidColorBrush(fill_color().ToD2D1(), &brush);
+  target_->FillGeometry(path_.Get(), brush.Get());
 }
 
 void PainterWin::StrokeRect(const RectF& rect) {
-  Gdiplus::Pen pen(ToGdi(top().stroke_color), top().line_width);
-  graphics_.DrawRectangle(&pen, ToGdi(ScaleRect(rect, scale_factor_)));
-  // Should clear current path.
-  use_gdi_current_point_ = true;
-  path_.Reset();
+  Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> brush;
+  target_->CreateSolidColorBrush(stroke_color().ToD2D1(), &brush);
+  target_->DrawRectangle(rect.ToD2D1(), brush.Get(), line_width(), nullptr);
 }
 
 void PainterWin::FillRect(const RectF& rect) {
-  FillRectPixel(ToEnclosingRect(ScaleRect(rect, scale_factor_)));
+  Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> brush;
+  target_->CreateSolidColorBrush(fill_color().ToD2D1(), &brush);
+  target_->FillRectangle(rect.ToD2D1(), brush.Get());
 }
 
 void PainterWin::DrawImage(Image* image, const RectF& rect) {
-  graphics_.DrawImage(image->GetNative(),
-                      ToGdi(ScaleRect(rect, scale_factor_)));
 }
 
 void PainterWin::DrawImageFromRect(Image* image, const RectF& src,
                                    const RectF& dest) {
-  RectF ps = ScaleRect(src, image->GetScaleFactor());
-  graphics_.DrawImage(image->GetNative(),
-                      ToGdi(ScaleRect(dest, scale_factor_)),
-                      ps.x(), ps.y(), ps.width(), ps.height(),
-                      Gdiplus::UnitPixel);
 }
 
 void PainterWin::DrawCanvas(Canvas* canvas, const RectF& rect) {
-  std::unique_ptr<Gdiplus::Bitmap> bitmap =
-      canvas->GetBitmap()->GetGdiplusBitmap();
-  graphics_.DrawImage(bitmap.get(), ToGdi(ScaleRect(rect, scale_factor_)));
 }
 
 void PainterWin::DrawCanvasFromRect(Canvas* canvas, const RectF& src,
                                     const RectF& dest) {
-  std::unique_ptr<Gdiplus::Bitmap> bitmap =
-      canvas->GetBitmap()->GetGdiplusBitmap();
-  RectF ps = ScaleRect(src, canvas->GetScaleFactor());
-  graphics_.DrawImage(bitmap.get(),
-                      ToGdi(ScaleRect(dest, scale_factor_)),
-                      ps.x(), ps.y(), ps.width(), ps.height(),
-                      Gdiplus::UnitPixel);
 }
 
 void PainterWin::DrawAttributedText(AttributedText* text, const RectF& rect) {
-  auto* target = State::GetCurrent()->GetDCRenderTarget(scale_factor_);
-  auto* renderer = State::GetCurrent()->GetDwriteTextRenderer(scale_factor_);
-
-  // Aquire HDC and bind it, no GDI+ operations from now on.
-  // Note that the HDC is untouched, we directly use GDI+'s transform for D2D1
-  // so we can get best performance and effect.
-  HDC hdc = graphics_.GetHDC();
-  RECT rc = nu::Rect(size_).ToRECT();
-  target->BindDC(hdc, &rc);
-  target->SetTransform(top().matrix);
-
-  target->BeginDraw();
-
+  if (!text_renderer_)
+    text_renderer_ = new DWriteTextRenderer(target_);
   IDWriteTextLayout* text_layout = text->GetNative();
   text_layout->SetMaxWidth(rect.width());
   text_layout->SetMaxHeight(rect.height());
-  text_layout->Draw(nullptr, renderer, rect.x(), rect.y());
-
-  D2D1_TAG tag1, tag2;
-  target->EndDraw(&tag1, &tag2);
-
-  graphics_.ReleaseHDC(hdc);
+  text_layout->Draw(nullptr, text_renderer_.get(), rect.x(), rect.y());
 }
 
-void PainterWin::DrawText(const std::string& text, const RectF& rect,
-                          const TextAttributes& attributes) {
-  DrawText(base::UTF8ToUTF16(text), rect, attributes);
-}
-
-void PainterWin::ClipRectPixel(const nu::Rect& rect) {
-  graphics_.SetClip(ToGdi(rect), Gdiplus::CombineModeIntersect);
-}
-
-void PainterWin::TranslatePixel(const Vector2d& offset) {
-  top().matrix = top().matrix *
-                 D2D1::Matrix3x2F::Translation(offset.x() / scale_factor_,
-                                               offset.y() / scale_factor_);
-  graphics_.TranslateTransform(offset.x(), offset.y(),
-                               Gdiplus::MatrixOrderAppend);
-}
-
-void PainterWin::FillRectPixel(const nu::Rect& rect) {
-  Gdiplus::SolidBrush brush(ToGdi(top().fill_color));
-  graphics_.FillRectangle(&brush, ToGdi(rect));
-  // Should clear current path.
-  use_gdi_current_point_ = true;
-  path_.Reset();
-}
-
-void PainterWin::DrawText(const base::string16& text, const RectF& rect,
-                          const TextAttributes& attributes) {
-  Gdiplus::SolidBrush brush(ToGdi(attributes.color));
-  Gdiplus::StringFormat format;
-  format.SetAlignment(ToGdi(attributes.align));
-  format.SetLineAlignment(ToGdi(attributes.valign));
-  if (!attributes.wrap)
-    format.SetFormatFlags(Gdiplus::StringFormatFlagsNoWrap);
-  if (attributes.ellipsis)
-    format.SetTrimming(Gdiplus::StringTrimmingEllipsisCharacter);
-  graphics_.DrawString(
-      text.c_str(), static_cast<int>(text.size()),
-      attributes.font->GetNative(), ToGdi(ScaleRect(rect, scale_factor_)),
-      &format, &brush);
-}
-
-void PainterWin::Initialize(float scale_factor) {
-  use_gdi_current_point_ = true;
-  scale_factor_ = scale_factor;
-
-  // Use high quality rendering.
-  graphics_.SetSmoothingMode(Gdiplus::SmoothingModeHighQuality);
-  graphics_.SetInterpolationMode(Gdiplus::InterpolationModeHighQuality);
-  graphics_.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);
-  graphics_.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAlias);
-  // Initial state.
-  states_.emplace(scale_factor, Color(), Color());
-}
-
-bool PainterWin::GetCurrentPoint(Gdiplus::PointF* point) {
-  if (use_gdi_current_point_) {
-    Gdiplus::Status status = path_.GetLastPoint(point);
-    if (status != Gdiplus::Ok)
-      return false;
-  } else {
-    *point = current_point_;
-  }
-  return true;
-}
-
-HDC PainterWin::GetHDC() {
-  // Get the clip region of graphics.
-  Gdiplus::Region clip;
-  graphics_.GetClip(&clip);
-  base::win::ScopedRegion region(clip.GetHRGN(&graphics_));
-  // Get the transform of graphics.
-  Gdiplus::Matrix matrix;
-  graphics_.GetTransform(&matrix);
-  XFORM xform;
-  matrix.GetElements(reinterpret_cast<float*>(&xform));
-
-  // Apply current clip region to the returned HDC.
-  HDC hdc = graphics_.GetHDC();
-  ::SelectClipRgn(hdc, region.get());
-  // Apply the world transform to HDC.
-  ::SetGraphicsMode(hdc, GM_ADVANCED);
-  ::SetWorldTransform(hdc, &xform);
-  return hdc;
-}
-
-void PainterWin::ReleaseHDC(HDC hdc) {
-  // Change the world transform back, otherwise the world transform of GDI+
-  // would be affected.
-  XFORM xform = {0};
-  xform.eM11 = 1.;
-  xform.eM22 = 1.;
-  ::SetWorldTransform(hdc, &xform);
-  // Return HDC.
-  graphics_.ReleaseHDC(hdc);
+void PainterWin::PopLayer() {
+  if (top().layer && top().layer_changed)
+    target_->PopLayer();
 }
 
 }  // namespace nu

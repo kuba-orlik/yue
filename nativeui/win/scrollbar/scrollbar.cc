@@ -149,24 +149,25 @@ bool Scrollbar::OnMouseClick(NativeEvent event) {
   return false;
 }
 
-void Scrollbar::Draw(PainterWin* painter, const Rect& dirty) {
+void Scrollbar::Draw(PainterWin* painter, const Rect& raw_dirty) {
   int track_size = GetTrackSize();
   if (track_size > 0) {
     int box_size = GetBoxSize();
     Rect track_area(vertical_ ? 0 : box_size, vertical_ ? box_size : 0,
                     vertical_ ? box_size : track_size,
                     vertical_ ? track_size : box_size);
+    RectF dirty(ScaleRect(RectF(raw_dirty), 1.f / scale_factor()));
     NativeTheme::ExtraParams params;
     params.scrollbar_track = params_;
     painter->DrawNativeTheme(
         (vertical_ ? NativeTheme::Part::ScrollbarVerticalTrack
                    : NativeTheme::Part::ScrollbarHorizontalTrack),
         state(),
-        track_area,
-        params);
+        ScaleRect(RectF(track_area), 1.f / scale_factor()),
+        dirty, params);
   }
 
-  ContainerImpl::Draw(painter, dirty);
+  ContainerImpl::Draw(painter, raw_dirty);
 }
 
 void Scrollbar::UpdateThumbPosition() {

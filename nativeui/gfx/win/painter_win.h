@@ -20,19 +20,24 @@ class DWriteTextRenderer;
 
 class PainterWin : public Painter {
  public:
+  // Paint on existing target.
+  PainterWin(ID2D1RenderTarget* target, HDC hdc);
+
   // Paint on the HDC.
   PainterWin(HDC hdc, const Size& size, float scale_factor);
+
   // PainterWin should be created on stack for best performance.
   ~PainterWin() override;
 
   // Draw a control.
   void DrawNativeTheme(NativeTheme::Part part,
                        ControlState state,
-                       const nu::Rect& rect,
+                       const RectF& rect,
+                       const RectF& dirty,
                        const NativeTheme::ExtraParams& extra);
 
   // Draw the focus rect.
-  void DrawFocusRect(const nu::Rect& rect);
+  void DrawFocusRect(const nu::RectF& rect);
 
   // Painter:
   void Save() override;
@@ -66,73 +71,53 @@ class PainterWin : public Painter {
   void DrawCanvasFromRect(Canvas* canvas, const RectF& src,
                           const RectF& dest) override;
   void DrawAttributedText(AttributedText* text, const RectF& rect) override;
-  // Unlike other platforms that drawing attributed text is basically the same
-  // with drawing normal text, on Windows attributed text is drawn with the
-  // DirectWrite and we have to create a bunch of COM objects everytime.
-  //
-  // So we still use GDI+ for drawing simple text for performance.
-  void DrawText(const std::string& text, const RectF& rect,
-                const TextAttributes& attributes) override;
-
-  // The pixel versions.
-  void ClipRectPixel(const nu::Rect& rect);
-  void TranslatePixel(const Vector2d& offset);
-  void StrokeRectPixel(const nu::Rect& rect);
-  void FillRectPixel(const nu::Rect& rect);
-
-  // The UTF16 versions
-  void DrawText(const base::string16& text, const RectF& rect,
-                const TextAttributes& attributes);
-  void DrawText(const base::string16& text, const PointF& point,
-                const TextAttributes& attributes);
 
  private:
-  // Used for common initialization.
-  void Initialize(float scale_factor);
-
-  // Get current point.
-  bool GetCurrentPoint(Gdiplus::PointF* point);
-
-  // Receive the HDC that can be painted on.
-  HDC GetHDC();
-  void ReleaseHDC(HDC dc);
+  // Popup current layer.
+  void PopLayer();
 
   // The saved state.
   struct PainterState {
-    PainterState(float line_width, Color stroke_color, Color fill_color)
-        : line_width(line_width),
-          stroke_color(stroke_color),
-          fill_color(fill_color),
-          state(0),
-          matrix(1.f, 0, 0, 1.f, 0, 0) {}
-    float line_width;
+    float line_width = 1.f;
     Color stroke_color;
     Color fill_color;
-    Gdiplus::GraphicsState state;
-
-    // D2D1 uses DIP metrics, so under high DPI the transformation of GDI+
-    // would be wrong since the latter uses pixels, to work around this we
-    // save a copy of matrix that uses DIP metrics.
-    D2D1::Matrix3x2F matrix;
+    D2D1::Matrix3x2F matrix = D2D1::Matrix3x2F::Identity();
+    Microsoft::WRL::ComPtr<ID2D1DrawingStateBlock> state;
+    Microsoft::WRL::ComPtr<ID2D1PathGeometry> clip;
+    Microsoft::WRL::ComPtr<ID2D1Layer> layer;
+    bool layer_changed = false;
   };
 
   // Return the top state.
   PainterState& top() { return states_.top(); }
+  float& line_width() { return top().line_width; }
+  Color& stroke_color() { return top().stroke_color; }
+  Color& fill_color() { return top().fill_color; }
+  D2D1::Matrix3x2F& matrix() { return top().matrix; }
 
   // The stack for all saved states.
   std::stack<PainterState> states_;
 
-  Gdiplus::Graphics graphics_;
+  ID2D1Factory* factory_;
+  ID2D1RenderTarget* target_;
+  HDC hdc_;
+  float scale_factor_;
+
+  // Whether the target is managed by us.
+  bool should_release_ = false;
+
+  scoped_refptr<DWriteTextRenderer> text_renderer_;
 
   // Current path.
-  Gdiplus::GraphicsPath path_;
-  // Current position, used when gdi+ does not have one.
-  Gdiplus::PointF current_point_;
-  // Whether gdi+ has a record of current point.
-  bool use_gdi_current_point_;
+  Microsoft::WRL::ComPtr<ID2D1PathGeometry> path_;
+  Microsoft::WRL::ComPtr<ID2D1GeometrySink> sink_;
 
-  Size size_;
-  float scale_factor_;
+  // Whether a figure is in-progress.
+  bool in_figure_ = false;
+
+  // Points information of current path.
+  PointF start_point_;
+  PointF last_point_;
 };
 
 }  // namespace nu

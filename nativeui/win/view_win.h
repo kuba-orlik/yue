@@ -125,6 +125,9 @@ class ViewImpl {
   // Get the size allocation that inside viewport.
   Rect GetClippedRect() const;
 
+  // Sizes.
+  RectF GetDIPLocalBounds() const;
+
   // Show/Hide the view.
   void SetVisible(bool visible);
 

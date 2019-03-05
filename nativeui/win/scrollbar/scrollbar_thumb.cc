@@ -40,15 +40,16 @@ bool ScrollbarThumb::OnMouseClick(NativeEvent event) {
   return Clickable::OnMouseClick(event);
 }
 
-void ScrollbarThumb::Draw(PainterWin* painter, const Rect& dirty) {
+void ScrollbarThumb::Draw(PainterWin* painter, const Rect& raw_dirty) {
+  RectF dirty = ScaleRect(RectF(raw_dirty), 1.f / scale_factor());
+  RectF bounds = ScaleRect(RectF(Rect(size_allocation().size())),
+                           1.f / scale_factor());
   NativeTheme::ExtraParams params;
   params.scrollbar_thumb = params_;
   painter->DrawNativeTheme(
       (vertical_ ? NativeTheme::Part::ScrollbarVerticalThumb
                  : NativeTheme::Part::ScrollbarHorizontalThumb),
-      state(),
-      Rect(size_allocation().size()),
-      params);
+      state(), GetDIPLocalBounds(), dirty, params);
 }
 
 }  // namespace nu

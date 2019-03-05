@@ -26,6 +26,7 @@
 #include "nativeui/gfx/win/painter_win.h"
 #include "nativeui/gfx/win/screen_win.h"
 #include "nativeui/menu_bar.h"
+#include "nativeui/state.h"
 #include "nativeui/win/drag_drop/clipboard_util.h"
 #include "nativeui/win/drag_drop/data_object.h"
 #include "nativeui/win/menu_base_win.h"
@@ -92,6 +93,15 @@ WindowImpl::WindowImpl(const Window::Options& options, Window* delegate)
     // Change default background color to transparent.
     background_color_ = Color(0, 0, 0, 0);
   }
+
+  // Create drawing target.
+  auto* factory = State::GetCurrent()->GetD2D1Factory();
+  auto properties = D2D1::RenderTargetProperties();
+  properties.dpiX = properties.dpiY = GetDPIFromScalingFactor(scale_factor_);
+  factory->CreateHwndRenderTarget(
+      properties,
+      D2D1::HwndRenderTargetProperties(hwnd(), D2D1::SizeU(1, 1)),
+      target_.GetAddressOf());
 }
 
 WindowImpl::~WindowImpl() {
@@ -324,6 +334,9 @@ LRESULT WindowImpl::OnNotify(int id, LPNMHDR pnmh) {
 }
 
 void WindowImpl::OnSize(UINT param, const Size& size) {
+  // Notify Direct2D that window has resized.
+  target_->Resize(size.ToD2D1());
+
   if (!delegate_->GetContentView())
     return;
   delegate_->GetContentView()->GetNative()->SizeAllocate(Rect(size));
@@ -344,6 +357,9 @@ LRESULT WindowImpl::OnDPIChanged(UINT msg, WPARAM w_param, LPARAM l_param) {
   float new_scale_factor = GetScalingFactorFromDPI(LOWORD(w_param));
   if (new_scale_factor != scale_factor_) {
     scale_factor_ = new_scale_factor;
+    // Notify Direct2D.
+    float dpi = GetDPIFromScalingFactor(scale_factor_);
+    target_->SetDpi(dpi, dpi);
     // Notify the content view of DPI change.
     delegate_->GetContentView()->GetNative()->BecomeContentView(this);
     // Move to the new window position under new DPI.
@@ -444,14 +460,14 @@ void WindowImpl::OnPaint(HDC) {
   base::win::ScopedGetDC dc(hwnd());
   {
     // Double buffering the drawing.
-    DoubleBuffer buffer(dc, bounds.size(), dirty, dirty.origin());
+    // DoubleBuffer buffer(dc, bounds.size(), dirty, dirty.origin());
 
     // Draw.
     {
       // Background.
-      PainterWin painter(buffer.dc(), bounds.size(), scale_factor_);
+      PainterWin painter(target_.Get(), dc);
       painter.SetColor(background_color_);
-      painter.FillRectPixel(dirty);
+      painter.FillRect(ScaleRect(RectF(dirty), 1.f / scale_factor_));
 
       // Controls.
       delegate_->GetContentView()->GetNative()->Draw(&painter, dirty);
@@ -466,9 +482,9 @@ void WindowImpl::OnPaint(HDC) {
       POINT zero = {0, 0};
       BLENDFUNCTION blend = {AC_SRC_OVER, 0, 255, AC_SRC_ALPHA};
 
-      buffer.SetNoCopy();
-      ::UpdateLayeredWindow(hwnd(), NULL, &position, &size, buffer.dc(),
-                            &zero, 0, &blend, ULW_ALPHA);
+      // buffer.SetNoCopy();
+      // ::UpdateLayeredWindow(hwnd(), NULL, &position, &size, buffer.dc(),
+      //                       &zero, 0, &blend, ULW_ALPHA);
     }
   }
 

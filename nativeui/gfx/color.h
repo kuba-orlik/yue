@@ -46,7 +46,7 @@ class NATIVEUI_EXPORT Color {
   NSColor* ToNSColor() const;
 #elif defined(OS_WIN)
   COLORREF ToCOLORREF() const;
-  D2D1_COLOR_F ToD2D1Color() const;
+  D2D1_COLOR_F ToD2D1() const;
 #elif defined(OS_LINUX)
   GdkRGBA ToGdkRGBA() const;
 #endif

@@ -4,10 +4,10 @@
 
 #include "nativeui/gfx/geometry/point_f.h"
 
-#if defined(OS_IOS)
-#include <CoreGraphics/CoreGraphics.h>
-#elif defined(OS_MACOSX)
+#if defined(OS_MACOSX)
 #include <ApplicationServices/ApplicationServices.h>
+#elif defined(OS_WIN)
+#include <d2d1.h>
 #endif
 
 #include "base/strings/stringprintf.h"
@@ -20,6 +20,11 @@ PointF::PointF(const CGPoint& r) : x_(r.x), y_(r.y) {
 
 CGPoint PointF::ToCGPoint() const {
   return CGPointMake(x(), y());
+}
+
+#elif defined(OS_WIN)
+D2D1_POINT_2F PointF::ToD2D1() const {
+  return {x(), y()};
 }
 #endif
 

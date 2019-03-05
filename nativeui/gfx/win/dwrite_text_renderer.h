@@ -18,7 +18,7 @@ namespace nu {
 // Implementation of dwrite renderer.
 class DWriteTextRenderer : public IDWriteTextRenderer {
  public:
-  DWriteTextRenderer(ID2D1DCRenderTarget* target, float scale_factor);
+  explicit DWriteTextRenderer(ID2D1RenderTarget* target);
   ~DWriteTextRenderer();
 
   // IDWriteTextRenderer:
@@ -70,8 +70,7 @@ class DWriteTextRenderer : public IDWriteTextRenderer {
   ULONG __stdcall Release() override;
 
  private:
-  ID2D1DCRenderTarget* target_;  // weak ref
-  float scale_factor_;
+  ID2D1RenderTarget* target_;  // weak ref
 
   // Cached brushes for colors.
   std::map<uint32_t, Microsoft::WRL::ComPtr<ID2D1SolidColorBrush>> brushes_;

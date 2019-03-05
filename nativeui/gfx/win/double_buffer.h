@@ -18,6 +18,7 @@ namespace nu {
 class DoubleBuffer {
  public:
   DoubleBuffer(HWND hwnd, const Size& size);
+  DoubleBuffer(HDC dc, const Size& size);
   DoubleBuffer(HDC dc, const Size& size, const Rect& src, const Point& dest);
   ~DoubleBuffer();
 
@@ -31,6 +32,7 @@ class DoubleBuffer {
   std::unique_ptr<Gdiplus::Bitmap> GetGdiplusBitmap() const;
 
   HDC dc() const { return mem_dc_.Get(); }
+  HBITMAP bitmap() const { return mem_bitmap_.get(); }
 
  private:
   HDC dc_;

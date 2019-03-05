@@ -177,8 +177,10 @@ void ContainerImpl::DrawChild(ViewImpl* child, PainterWin* painter,
   Vector2d child_origin = child->size_allocation().OffsetFromOrigin() -
                           size_allocation().OffsetFromOrigin();
   painter->Save();
-  painter->TranslatePixel(child_origin);
-  painter->ClipRectPixel(Rect(child->size_allocation().size()));
+  painter->Translate(ScaleVector2d(Vector2dF(child_origin),
+                                   1.f / scale_factor()));
+  painter->ClipRect(RectF(ScaleSize(SizeF(child->size_allocation().size()),
+                                    1.f / scale_factor())));
   child->Draw(painter, child_dirty - child_origin);
   painter->Restore();
 }
@@ -244,9 +246,10 @@ class ContainerAdapter : public ContainerImpl,
   void OnDraw(PainterWin* painter, const Rect& dirty) override {
     if (container_->on_draw.IsEmpty())
       return;
-    painter->Save();
-    painter->ClipRectPixel(Rect(size_allocation().size()));
     float scale_factor = container_->GetNative()->scale_factor();
+    painter->Save();
+    painter->ClipRect(RectF(ScaleSize(SizeF(size_allocation().size()),
+                                      1.f / scale_factor)));
     container_->on_draw.Emit(container_, static_cast<Painter*>(painter),
                              ScaleRect(RectF(dirty), 1.0f / scale_factor));
     painter->Restore();

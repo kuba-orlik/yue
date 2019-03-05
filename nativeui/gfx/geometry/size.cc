@@ -5,6 +5,7 @@
 #include "nativeui/gfx/geometry/size.h"
 
 #if defined(OS_WIN)
+#include <d2d1.h>
 #include <windows.h>
 #elif defined(OS_IOS)
 #include <CoreGraphics/CoreGraphics.h>
@@ -39,6 +40,11 @@ SIZE Size::ToSIZE() const {
   s.cy = height();
   return s;
 }
+
+D2D1_SIZE_U Size::ToD2D1() const {
+  return {static_cast<UINT32>(width()), static_cast<UINT32>(height())};
+}
+
 #elif defined(OS_MACOSX)
 CGSize Size::ToCGSize() const {
   return CGSizeMake(width(), height());

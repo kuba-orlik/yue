@@ -7,10 +7,10 @@
 #include <algorithm>
 #include <limits>
 
-#if defined(OS_IOS)
-#include <CoreGraphics/CoreGraphics.h>
-#elif defined(OS_MACOSX)
+#if defined(OS_MACOSX)
 #include <ApplicationServices/ApplicationServices.h>
+#elif defined(OS_WIN)
+#include <d2d1.h>
 #endif
 
 #include "base/logging.h"
@@ -39,6 +39,11 @@ RectF::RectF(const CGRect& r)
 
 CGRect RectF::ToCGRect() const {
   return CGRectMake(x(), y(), width(), height());
+}
+
+#elif defined(OS_WIN)
+D2D1_RECT_F RectF::ToD2D1() const {
+  return D2D1::RectF(x(), y(), right(), bottom());
 }
 #endif
 

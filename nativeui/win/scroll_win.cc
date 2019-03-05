@@ -105,8 +105,8 @@ void ScrollImpl::Draw(PainterWin* painter, const Rect& dirty) {
     DrawChild(v_scrollbar_.get(), painter, dirty);
 
   // The scroll view must be clipped.
-  painter->ClipRectPixel(
-      GetViewportRect() - size_allocation().OffsetFromOrigin());
+  Rect clip = GetViewportRect() - size_allocation().OffsetFromOrigin();
+  painter->ClipRect(ScaleRect(RectF(clip), 1.f / scale_factor()));
   DrawChild(delegate_->GetContentView()->GetNative(), painter, dirty);
 }
 

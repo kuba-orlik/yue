@@ -7,13 +7,13 @@
 #include <d2d1.h>
 #include <dwrite.h>
 #include <shellscalingapi.h>
+#include <wincodec.h>
 
 #include "base/logging.h"
 #include "base/win/scoped_com_initializer.h"
 #include "base/win/windows_version.h"
 #include "nativeui/gfx/screen.h"
 #include "nativeui/gfx/win/direct_write.h"
-#include "nativeui/gfx/win/dwrite_text_renderer.h"
 #include "nativeui/gfx/win/native_theme.h"
 #include "nativeui/gfx/win/screen_win.h"
 #include "nativeui/win/util/class_registrar.h"
@@ -142,35 +142,14 @@ ID2D1Factory* State::GetD2D1Factory() {
   return d2d1_factory_.Get();
 }
 
-ID2D1DCRenderTarget* State::GetDCRenderTarget(float scale_factor) {
-  float dpi = GetDPIFromScalingFactor(scale_factor);
-  auto it = dc_render_targets_.find(dpi);
-  if (it == dc_render_targets_.end()) {
-    Microsoft::WRL::ComPtr<ID2D1DCRenderTarget> target;
-    D2D1_RENDER_TARGET_PROPERTIES properties = {
-      D2D1_RENDER_TARGET_TYPE_DEFAULT,
-      {DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED},
-      dpi, dpi,
-      D2D1_RENDER_TARGET_USAGE_NONE,
-      D2D1_FEATURE_LEVEL_DEFAULT,
-    };
-    CHECK(SUCCEEDED(GetD2D1Factory()->CreateDCRenderTarget(
-                        &properties, target.GetAddressOf())));
-    target->SetDpi(dpi, dpi);
-    it = std::get<0>(dc_render_targets_.emplace(dpi, target));
+IWICImagingFactory* State::GetWICFactory() {
+  if (!wic_factory_) {
+    InitializeCOM();
+    ::CoCreateInstance(CLSID_WICImagingFactory, nullptr,
+                       CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&wic_factory_));
+    CHECK(wic_factory_.Get());
   }
-  return it->second.Get();
-}
-
-DWriteTextRenderer* State::GetDwriteTextRenderer(float scale_factor) {
-  float dpi = GetDPIFromScalingFactor(scale_factor);
-  auto it = dwrite_text_renderers_.find(dpi);
-  if (it == dwrite_text_renderers_.end()) {
-    scoped_refptr<DWriteTextRenderer> renderer =
-        new DWriteTextRenderer(GetDCRenderTarget(scale_factor), scale_factor);
-    it = std::get<0>(dwrite_text_renderers_.emplace(dpi, renderer));
-  }
-  return it->second.get();
+  return wic_factory_.Get();
 }
 
 }  // namespace nu
